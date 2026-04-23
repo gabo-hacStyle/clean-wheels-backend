@@ -46,4 +46,7 @@ export interface EnvConfig {
     DB_URL: string;
     JWT_SECRET: string;
     ALLOWED_ORIGINS: string;
+    GOOGLE_CLIENT_ID: string;
+    GOOGLE_CLIENT_SECRET: string;
+    GOOGLE_REDIRECT_URI: string;
 }

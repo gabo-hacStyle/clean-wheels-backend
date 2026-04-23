@@ -10,6 +10,9 @@ const schema = Joi.object<EnvConfig>({
     JWT_SECRET: Joi.string().required(),
     DB_URL: Joi.string(),
     ALLOWED_ORIGINS: Joi.string().default('http://localhost:5173'),
+    GOOGLE_CLIENT_ID: Joi.string().required(),
+    GOOGLE_CLIENT_SECRET: Joi.string().required(),
+    GOOGLE_REDIRECT_URI: Joi.string().required(),
 }).unknown();
 
 const { error, value } = schema.validate(process.env);
