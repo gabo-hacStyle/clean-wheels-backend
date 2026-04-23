@@ -7,6 +7,8 @@ import rateLimit from "express-rate-limit";
 import { env } from '@config/env'
 import logger from '@utils/logger'
 
+import adminRoutes from "@routes/admin.routes";
+
 const app = express()
 
 app.use(helmet());
@@ -35,5 +37,6 @@ app.use(
 
 app.use(express.json())
 
+app.use('/api/admin', adminRoutes)
 
 export default app;
