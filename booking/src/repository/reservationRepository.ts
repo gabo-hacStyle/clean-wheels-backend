@@ -70,7 +70,7 @@ class ReservationRepository {
         `SELECT COUNT(*) AS count
         FROM reservations
         WHERE status NOT IN ('cancelada')
-          AND ($3::uuid IS NULL OR id != $3)
+          AND ($3::int IS NULL OR id != $3::int)
           AND datetime < $2
           AND (datetime + (total_duration || ' minutes')::interval) > $1`,
         [start, end, excludeReservationId ?? null]
