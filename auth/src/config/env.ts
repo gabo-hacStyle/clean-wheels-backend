@@ -13,6 +13,7 @@ const schema = Joi.object<EnvConfig>({
     GOOGLE_CLIENT_ID: Joi.string().required(),
     GOOGLE_CLIENT_SECRET: Joi.string().required(),
     GOOGLE_REDIRECT_URI: Joi.string().required(),
+    ADMIN_EMAILS: Joi.string().default(''),
 }).unknown();
 
 const { error, value } = schema.validate(process.env);
