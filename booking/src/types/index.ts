@@ -84,3 +84,49 @@ export interface ApiResponse<T> {
   message?: string;
   error?: string;
 }
+// Agregar junto a los otros Request Bodies
+
+export interface CheckAvailabilityBody {
+  datetime: string;       // ISO 8601: "2025-06-15T10:00:00Z"
+  total_duration: number; // Duración total en minutos de los servicios seleccionados
+}
+
+export interface AvailabilityResult {
+  available: boolean;
+  datetime: string;
+  end_datetime: string;
+  total_duration: number;
+  concurrent_reservations: number;
+  slots_remaining: number;
+  message: string;
+}
+
+export interface EmployeeSlot {
+  slot_index: number;        // 1, 2 o 3 (representa el empleado)
+  reservation_id: string | null;
+  vehicle_id: string | null;
+  placa: string | null;
+  marca: string | null;
+  modelo: string | null;
+  services: string[] | null; // nombres de los servicios
+  start_time: string | null;
+  end_time: string | null;
+  status: ReservationStatus | null;
+}
+
+export interface HourlySchedule {
+  hour: string;              // "2025-06-15T10:00:00.000Z"
+  hour_label: string;        // "10:00"
+  employees: EmployeeSlot[];
+}
+
+export interface UpdateReservationBody {
+  datetime?: string;      // nueva fecha/hora ISO 8601
+  service_ids?: string[]; // nuevos servicios
+}
+
+// Lo que el gateway inyecta en cada request
+export interface GatewayUser {
+  id: string;
+  role: UserRole;
+}
