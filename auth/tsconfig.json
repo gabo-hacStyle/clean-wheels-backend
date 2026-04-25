@@ -5,6 +5,8 @@
     "lib": ["ES2022"],
     "outDir": "./dist",
     "rootDir": "./src",
+    "baseUrl": ".",
+    "ignoreDeprecations": "6.0",
     "strict": true,
     "esModuleInterop": true,
     "allowSyntheticDefaultImports": true,
@@ -23,8 +25,7 @@
       "@middleware/*": ["src/middleware/*"],
       "@utils/*": ["src/utils/*"],
       "@routes/*": ["src/routes/*"]
-    },
-    "types": ["node"]
+    }
   },
   "include": ["src/**/*"],
   "exclude": ["node_modules", "dist", "**/*.test.ts"]

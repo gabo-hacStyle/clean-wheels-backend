@@ -41,8 +41,7 @@ class GoogleService {
 
         return {
             googleId: payload.sub,
-            email: payload.email!,
-            name: payload.name ?? '',
+            email: payload.email!
         }
     }
 }

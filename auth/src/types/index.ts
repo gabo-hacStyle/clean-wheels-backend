@@ -4,27 +4,16 @@ export type AuthProvider = 'local' | 'google';
 export interface User {
     id: string;
     email: string;
-    role: UserRole;
-    number_document: string | null;
-    google_id: string | null;
-    auth_provider: AuthProvider;
-    created_at: Date;
-    updated_at: Date;
-}
-
-export interface Session {
-    id: string;
-    user_id: string;
-    token: string;
-    created_at: Date;
-    expires_at: Date;
-    is_active: boolean;
+    rol: UserRole;
+    cedula: string | null;
+    provider?: AuthProvider;
+    provider_id?: string;
 }
 
 export interface JwtPayload {
     sub: string;
     email: string;
-    role: UserRole;
+    rol: UserRole;
     iat?: number;
     exp?: number;
 }
@@ -32,12 +21,20 @@ export interface JwtPayload {
 export interface GoogleUserInfo {
     googleId: string;
     email: string;
-    name: string;
+}
+
+export interface RegisterDTO {
+    googleId: string;
+    cedula: string;
+}
+
+export interface LoginDTO {
+    googleId: string;
 }
 
 export interface LoginResult {
     token: string;
-    user: Pick<User, 'id' | 'email' | 'role'>;
+    user: Pick<User, 'id' | 'email' | 'rol'>;
 }
 
 export interface EnvConfig {
@@ -45,7 +42,7 @@ export interface EnvConfig {
     NODE_ENV: string;
     DB_URL: string;
     JWT_SECRET: string;
-    ALLOWED_ORIGINS: string;
+    JWT_EXPIRES_IN: string;
     GOOGLE_CLIENT_ID: string;
     GOOGLE_CLIENT_SECRET: string;
     GOOGLE_REDIRECT_URI: string;

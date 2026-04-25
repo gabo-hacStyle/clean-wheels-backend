@@ -38,13 +38,13 @@ class AuthService {
         const token = jwtUtil.sign({
             sub: user.id,
             email: user.email,
-            role: user.role
+            rol: user.rol
         });
 
-        logger.info(`Login exitoso ${user.email} (${user.role}`);
+        logger.info(`Login exitoso ${user.email} (${user.rol}`);
         return {
             token,
-            user: { id: user.id, email: user.email, role: user.role }
+            user: { id: user.id, email: user.email, rol: user.rol }
         }
     }
 
@@ -54,6 +54,18 @@ class AuthService {
 
     async getUserById(id: string) {
         return userRepository.findById(id);
+    }
+
+    async updateCedula(userId: string, cedula: string) {
+        const user = await userRepository.updateCedula(userId, cedula);
+        if (!user) throw new Error('Usuario no encontrado');
+
+        return {
+            id: user.id,
+            email: user.email,
+            rol: user.rol,
+            cedula: user.cedula
+        };
     }
 }
 

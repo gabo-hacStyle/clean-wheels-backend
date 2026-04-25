@@ -8,8 +8,8 @@ const schema = Joi.object<EnvConfig>({
         .valid('development', 'production', 'test')
         .default('development'),
     JWT_SECRET: Joi.string().required(),
-    DB_URL: Joi.string(),
-    ALLOWED_ORIGINS: Joi.string().default('http://localhost:5173'),
+    JWT_EXPIRES_IN: Joi.string().default('7d'),
+    DB_URL: Joi.string().required(),
     GOOGLE_CLIENT_ID: Joi.string().required(),
     GOOGLE_CLIENT_SECRET: Joi.string().required(),
     GOOGLE_REDIRECT_URI: Joi.string().required(),
