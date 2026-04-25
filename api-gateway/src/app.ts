@@ -4,10 +4,13 @@ import cors from 'cors';
 import morgan, { StreamOptions } from 'morgan';
 import rateLimit from "express-rate-limit";
 
-import { env } from '@config/env'
-import logger from '@utils/logger'
+import { env } from '@config/env';
+import logger from '@utils/logger';
 
+import authRoute from "@routes/auth.route";
 import adminRoutes from "@routes/admin.routes";
+import bookingRoute from "@routes/booking.route";
+import {notificationsProxy} from "./proxy/notifications.proxy";
 
 const app = express()
 
@@ -33,10 +36,17 @@ app.use(
         standardHeaders: true,
         legacyHeaders: false,
     }),
-)
+);
 
-app.use(express.json())
+app.use(express.json());
 
-app.use('/api/admin', adminRoutes)
+app.use('/api/auth', authRoute);
+app.use('/api/admin', adminRoutes);
+app.use('/api/booking', bookingRoute);
+app.use('/api/notification', notificationsProxy);
+
+app.get('/health', (_req, res) => {
+   res.json({ status: 'ok', service: 'api-gateway' });
+});
 
 export default app;

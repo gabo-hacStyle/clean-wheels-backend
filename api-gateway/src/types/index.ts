@@ -1,7 +1,7 @@
 export interface JwtPayload {
     sub: string;
     email: string;
-    role: 'CLIENT' | 'ADMIN' | 'VISITANT';
+    role: 'CLIENT' | 'ADMIN' | 'GUEST';
     iat?: never;
     exp?: number;
 }

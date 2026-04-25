@@ -21,14 +21,14 @@ export const authenticate = (
         const decoded = jwt.verify(token, env.JWT_SECRET);
 
         if (typeof decoded === "string") {
-            res.status(401).send("Token inválido");
+            res.status(401).json({ error: "Token inválido" });
             return;
         }
 
         req.user = decoded as JwtPayload;
         next();
     } catch {
-        res.status(401).send("Token inválido o expirado");
+        res.status(401).json({ error: "Token inválido o expirado" });
     }
 }
 
