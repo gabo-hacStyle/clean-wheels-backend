@@ -1,6 +1,8 @@
 import { PoolClient } from "pg";
 import DatabaseConnection from "../db/connection";
 import {
+  CompleteReservationResult,
+  Receipt,
   Reservation,
   ReservationWithServices,
   WashService,
@@ -325,6 +327,192 @@ async updateReservation(
     );
   } finally {
     client.release();
+  }
+}
+
+// Busca el user_id del dueño principal del vehículo de una reserva
+// (el primero registrado en vehicles_users, para asociarlo al receipt)
+async findPrimaryUserByVehicle(vehicleId: string): Promise<string | null> {
+  try {
+    const rows = await this.db.query<{ user_id: string }>(
+      `SELECT user_id FROM vehicles_users
+       WHERE vehicle_id = $1
+       ORDER BY id ASC
+       LIMIT 1`,
+      [vehicleId]
+    );
+    return rows.length > 0 ? rows[0].user_id : null;
+  } catch (error) {
+    const err = error as Error;
+    throw new Error(
+      `[ReservationRepository] Error obteniendo usuario principal del vehículo: ${err.message}`
+    );
+  }
+}
+
+async completeReservationWithReceipt(
+  reservationId: string,
+  userId: string,
+  totalPrice: number,
+  paymentMethod: string
+): Promise<CompleteReservationResult> {
+  const client: PoolClient = await this.db.getClient();
+  try {
+    await client.query("BEGIN");
+
+    const reservationResult = await client.query(
+      `UPDATE reservations
+       SET status = 'finalizada', updated_at = NOW()
+       WHERE id = $1
+       RETURNING *`,
+      [reservationId]
+    );
+
+    if (reservationResult.rows.length === 0) {
+      throw new Error(`No se encontró la reserva "${reservationId}".`);
+    }
+
+    const reservation: Reservation = reservationResult.rows[0];
+
+    // Regla de negocio: descuento siempre nulo por ahora
+    const discount = 0;
+    const precioFinal = totalPrice - discount;
+
+    const receiptResult = await client.query(
+      `INSERT INTO receipts
+         (user_id, reservation_id, discount, precio_final, payment_method, payment_datetime)
+       VALUES ($1, $2, $3, $4, $5, NOW())
+       RETURNING *`,
+      [userId, reservationId, discount, precioFinal, paymentMethod]
+    );
+
+    const receipt: Receipt = receiptResult.rows[0];
+
+    await client.query("COMMIT");
+
+    return { reservation, receipt };
+  } catch (error) {
+    await client.query("ROLLBACK");
+    const err = error as Error;
+    throw new Error(
+      `[ReservationRepository] Error completando reserva (transacción revertida): ${err.message}`
+    );
+  } finally {
+    client.release();
+  }
+}
+
+// Reservas activas de todos los vehículos de un usuario
+async findActiveReservationsByUserId(
+  userId: string
+): Promise<ReservationWithServices[]> {
+  try {
+    const rows = await this.db.query<
+      Reservation & {
+        placa: string;
+        marca: string;
+        modelo: string;
+        service_names: string;
+        service_ids: string;
+      }
+    >(
+      `SELECT
+         r.id,
+         r.vehicle_id,
+         r.datetime,
+         r.status,
+         r.total_price,
+         r.total_duration,
+         r.created_at,
+         r.updated_at,
+         v.placa,
+         v.marca,
+         v.modelo,
+         STRING_AGG(s.id::text, ',' ORDER BY s.name)   AS service_ids,
+         STRING_AGG(s.name,     ', ' ORDER BY s.name)  AS service_names
+       FROM reservations r
+       INNER JOIN vehicles v              ON v.id = r.vehicle_id
+       INNER JOIN vehicles_users vu       ON vu.vehicle_id = v.id
+       INNER JOIN reservations_services rs ON rs.reservation_id = r.id
+       INNER JOIN services s              ON s.id = rs.service_id
+       WHERE vu.user_id = $1
+         AND r.status IN ('pendiente', 'confirmada', 'en_proceso')
+       GROUP BY r.id, v.placa, v.marca, v.modelo
+       ORDER BY r.datetime ASC`,
+      [userId]
+    );
+
+    return rows.map((row) => ({
+      id: row.id,
+      vehicle_id: row.vehicle_id,
+      datetime: row.datetime,
+      status: row.status,
+      total_price: row.total_price,
+      total_duration: row.total_duration,
+      created_at: row.created_at,
+      updated_at: row.updated_at,
+      // Adjuntamos placa/marca/modelo como campos extra para la respuesta
+      placa: row.placa,
+      marca: row.marca,
+      modelo: row.modelo,
+      services: row.service_names
+        ? row.service_names.split(", ").map((name, i) => ({
+            id: row.service_ids.split(",")[i],
+            name,
+          } as any))
+        : [],
+    }));
+  } catch (error) {
+    const err = error as Error;
+    throw new Error(
+      `[ReservationRepository] Error obteniendo reservas activas del usuario "${userId}": ${err.message}`
+    );
+  }
+}
+
+// Retorna para cada hora (8-17) de cada día del rango cuántas reservas se solapan
+async findSlotOccupancyByWeek(
+  weekStart: Date,
+  weekEnd: Date
+): Promise<{ slot_start: Date; count: number }[]> {
+  try {
+    // Genera una fila por cada hora del rango y cuenta solapamientos
+    const rows = await this.db.query<{ slot_start: Date; count: string }>(
+      `WITH hours AS (
+         SELECT generate_series(
+           $1::timestamptz,
+           $2::timestamptz - INTERVAL '1 hour',
+           INTERVAL '1 hour'
+         ) AS slot_start
+       ),
+       business_hours AS (
+         SELECT slot_start
+         FROM hours
+         WHERE EXTRACT(HOUR FROM slot_start AT TIME ZONE 'America/Bogota')
+               BETWEEN 8 AND 17
+       )
+       SELECT
+         bh.slot_start,
+         COUNT(r.id) AS count
+       FROM business_hours bh
+       LEFT JOIN reservations r
+         ON r.status NOT IN ('cancelada')
+         AND r.datetime < bh.slot_start + INTERVAL '1 hour'
+         AND (r.datetime + (r.total_duration || ' minutes')::interval) > bh.slot_start
+       GROUP BY bh.slot_start
+       ORDER BY bh.slot_start ASC`,
+      [weekStart, weekEnd]
+    );
+
+    return rows.map((r) => ({
+      slot_start: new Date(r.slot_start),
+      count: parseInt(r.count, 10),
+    }));
+  } catch (error) {
+    const err = error as Error;
+    throw new Error(
+      `[ReservationRepository] Error consultando ocupación semanal: ${err.message}`
+    );
   }
 }
 

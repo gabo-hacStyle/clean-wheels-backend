@@ -1,17 +1,24 @@
 import ReservationRepository from "../repository/reservationRepository";
 import {
   AvailabilityResult,
+  CalendarDay,
+  CalendarSlot,
   CheckAvailabilityBody,
+  CompleteReservationBody,
+  CompleteReservationResult,
   CreateReservationBody,
   EmployeeSlot,
   GatewayUser,
   HourlySchedule,
+  PaymentMethod,
   Reservation,
   ReservationStatus,
   ReservationWithServices,
   UpdateReservationBody,
   UserRole,
   WashService,
+  WeeklyCalendar,
+  WeeklyCalendarQuery,
 } from "../types";
 
 class ReservationService {
@@ -414,6 +421,159 @@ class ReservationService {
       );
     }
   }
+
+  async completeReservation(
+  reservationId: string,
+  body: CompleteReservationBody,
+  user: GatewayUser
+): Promise<CompleteReservationResult> {
+  try {
+    if (!body.payment_method) {
+      throw new Error("El campo payment_method es requerido.");
+    }
+
+    const validMethods = Object.values(PaymentMethod) as string[];
+    if (!validMethods.includes(body.payment_method)) {
+      throw new Error(
+        `Método de pago inválido: "${body.payment_method}". Valores permitidos: ${validMethods.join(", ")}`
+      );
+    }
+
+    const reservation = await this.repository.findReservationById(reservationId);
+    if (!reservation) {
+      throw new Error(`La reserva "${reservationId}" no existe.`);
+    }
+
+    const completableStatuses: ReservationStatus[] = [
+      ReservationStatus.CONFIRMADA,
+      ReservationStatus.EN_PROCESO,
+    ];
+
+    if (!completableStatuses.includes(reservation.status)) {
+      throw new Error(
+        `La reserva no puede completarse porque su estado actual es "${reservation.status}".`
+      );
+    }
+
+    // Solo admin puede completar reservas
+    if (user.role !== UserRole.ADMIN) {
+      throw new Error(
+        "Solo un administrador puede marcar una reserva como completada."
+      );
+    }
+
+    const userId = await this.repository.findPrimaryUserByVehicle(
+      reservation.vehicle_id
+    );
+    if (!userId) {
+      throw new Error(
+        `No se encontró un usuario asociado al vehículo "${reservation.vehicle_id}".`
+      );
+    }
+
+    return await this.repository.completeReservationWithReceipt(
+      reservationId,
+      userId,
+      reservation.total_price,
+      body.payment_method
+    );
+  } catch (error) {
+    const err = error as Error;
+    throw new Error(
+      `[ReservationService] Error al completar la reserva: ${err.message}`
+    );
+  }
+}
+
+async getActiveReservationsByUser(
+  userId: string
+): Promise<ReservationWithServices[]> {
+  try {
+    if (!userId || userId.trim() === "") {
+      throw new Error("El user_id es requerido.");
+    }
+
+    return await this.repository.findActiveReservationsByUserId(userId);
+  } catch (error) {
+    const err = error as Error;
+    throw new Error(
+      `[ReservationService] Error al obtener reservas activas del usuario: ${err.message}`
+    );
+  }
+}
+
+async getWeeklyCalendar(query: WeeklyCalendarQuery): Promise<WeeklyCalendar> {
+  try {
+    if (!query.week_start) {
+      throw new Error("El parámetro week_start es requerido (formato: YYYY-MM-DD).");
+    }
+
+    // week_start debe ser lunes — se acepta cualquier día y se normaliza
+    const startDate = new Date(`${query.week_start}T08:00:00`);
+    if (isNaN(startDate.getTime())) {
+      throw new Error(
+        `Formato de fecha inválido para week_start: "${query.week_start}". Use YYYY-MM-DD.`
+      );
+    }
+
+    // Fin: domingo a las 18:00 (7 días, hasta las 18 inclusive)
+    const endDate = new Date(startDate);
+    endDate.setDate(endDate.getDate() + 7);
+
+    const occupancy = await this.repository.findSlotOccupancyByWeek(
+      startDate,
+      endDate
+    );
+
+    const maxSlots = this.repository.getMaxConcurrentReservations();
+
+    // Agrupar por día
+    const dayMap = new Map<string, CalendarSlot[]>();
+
+    for (const slot of occupancy) {
+      const localDate = new Date(slot.slot_start);
+
+      const dateKey = localDate.toLocaleDateString("en-CA", {
+        timeZone: "America/Bogota",
+      }); // "2025-06-15"
+
+      const hourLabel = localDate.toLocaleTimeString("es-CO", {
+        timeZone: "America/Bogota",
+        hour: "2-digit",
+        minute: "2-digit",
+        hour12: false,
+      }); // "08:00"
+
+      if (!dayMap.has(dateKey)) dayMap.set(dateKey, []);
+
+      dayMap.get(dateKey)!.push({
+        hour: hourLabel,
+        full: slot.count >= maxSlots,
+      });
+    }
+
+    // Construir la respuesta ordenada por día
+    const days: CalendarDay[] = Array.from(dayMap.entries())
+      .sort(([a], [b]) => a.localeCompare(b))
+      .map(([date, slots]) => ({ date, slots }));
+
+    const weekEndDate = new Date(endDate);
+    weekEndDate.setDate(weekEndDate.getDate() - 1);
+
+    return {
+      week_start: query.week_start,
+      week_end: weekEndDate.toLocaleDateString("en-CA", {
+        timeZone: "America/Bogota",
+      }),
+      days,
+    };
+  } catch (error) {
+    const err = error as Error;
+    throw new Error(
+      `[ReservationService] Error generando calendario semanal: ${err.message}`
+    );
+  }
+}
 }
 
 export default ReservationService;

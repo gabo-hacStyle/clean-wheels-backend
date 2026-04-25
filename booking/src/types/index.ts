@@ -130,3 +130,65 @@ export interface GatewayUser {
   id: string;
   role: UserRole;
 }
+
+
+export interface Receipt {
+  id: string;
+  user_id: string;
+  reservation_id: string;
+  discount: number;
+  precio_final: number;
+  payment_method: string;
+  payment_datetime: Date;
+  created_at: Date;
+}
+
+export interface CompleteReservationResult {
+  reservation: Reservation;
+  receipt: Receipt;
+}
+
+export enum PaymentMethod {
+  EFECTIVO = "efectivo",
+  TARJETA = "tarjeta",
+  TRANSFERENCIA = "transferencia",
+}
+
+export interface CompleteReservationBody {
+  payment_method: PaymentMethod;
+}
+
+// Calendario
+export interface CalendarSlot {
+  hour: string;       // "08:00"
+  full: boolean;
+}
+
+export interface CalendarDay {
+  date: string;       // "2025-06-15"
+  slots: CalendarSlot[];
+}
+
+export interface WeeklyCalendar {
+  week_start: string;
+  week_end: string;
+  days: CalendarDay[];
+}
+
+export interface WeeklyCalendarQuery {
+  week_start: string; // ISO date "2025-06-15" — lunes de la semana
+}
+
+export interface CreateServiceBody {
+  name: string;
+  price: number;
+  description: string;
+  duration: number; // minutos
+}
+
+export interface UpdateServiceBody {
+  name?: string;
+  price?: number;
+  description?: string;
+  duration?: number;
+}

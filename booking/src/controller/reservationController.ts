@@ -1,16 +1,21 @@
 import { Router, Request, Response } from "express";
 import ReservationService from "../service/reservationService";
 
-import { requireGatewayAuth } from "../middlewares/auth.middleware";
+import { requireAdmin, requireGatewayAuth } from "../middlewares/auth.middleware";
 import {
   ApiResponse,
   AvailabilityResult,
   CheckAvailabilityBody,
+  CompleteReservationBody,
+  CompleteReservationResult,
   CreateReservationBody,
   HourlySchedule,
   Reservation,
   ReservationWithServices,
   UpdateReservationBody,
+  UserRole,
+  WeeklyCalendar,
+  WeeklyCalendarQuery,
 } from "../types";
 
 class ReservationController {
@@ -28,7 +33,17 @@ class ReservationController {
     this.router.post("/", this.createReservation.bind(this));
     this.router.get("/upcoming", this.getUpcomingSchedule.bind(this));
     this.router.patch("/:id", requireGatewayAuth, this.updateReservation.bind(this));
-  this.router.patch("/:id/cancel", requireGatewayAuth, this.cancelReservation.bind(this));
+    this.router.patch("/:id/cancel", requireGatewayAuth, this.cancelReservation.bind(this));
+    this.router.post("/:id/complete",
+      requireGatewayAuth,
+      requireAdmin,
+      this.completeReservation.bind(this)
+    );
+    this.router.get("/user/:userId",
+      requireGatewayAuth,
+      this.getActiveReservationsByUser.bind(this)
+    );
+    this.router.get("/calendar/week", this.getWeeklyCalendar.bind(this));
   }
 
   private async checkAvailability(req: Request, res: Response): Promise<void> {
@@ -223,6 +238,121 @@ private async updateReservation(
   }
 }
 
+
+private async completeReservation(
+  req: Request<{ id: string }>,
+  res: Response
+): Promise<void> {
+  try {
+    const { id } = req.params;
+    const body = req.body as CompleteReservationBody;
+    const user = req.gatewayUser!;
+
+    const result = await this.service.completeReservation(id, body, user);
+
+    const response: ApiResponse<CompleteReservationResult> = {
+      success: true,
+      data: result,
+      message: "Reserva completada y factura generada exitosamente.",
+    };
+
+    res.status(200).json(response);
+  } catch (error) {
+    const err = error as Error;
+
+    const isForbidden =
+      err.message.includes("Solo un administrador");
+
+    const isBusinessError =
+      err.message.includes("no existe") ||
+      err.message.includes("no puede completarse") ||
+      err.message.includes("payment_method") ||
+      err.message.includes("Método de pago") ||
+      err.message.includes("usuario asociado") ||
+      isForbidden;
+
+    const response: ApiResponse<null> = {
+      success: false,
+      error: err.message,
+    };
+
+    res.status(isForbidden ? 403 : isBusinessError ? 422 : 500).json(response);
+  }
+}
+
+private async getActiveReservationsByUser(
+   req: Request<{ userId: string }>,  
+  res: Response
+): Promise<void> {
+  try {
+    const { userId } = req.params;
+    const gatewayUser = req.gatewayUser!;
+
+    // Cliente solo puede ver sus propias reservas; admin puede ver cualquier usuario
+    if (
+      gatewayUser.role !== UserRole.ADMIN &&
+      gatewayUser.id !== userId
+    ) {
+      const response: ApiResponse<null> = {
+        success: false,
+        error: "No tienes permisos para ver las reservas de otro usuario.",
+      };
+      res.status(403).json(response);
+      return;
+    }
+
+    const reservations = await this.service.getActiveReservationsByUser(userId);
+
+    const response: ApiResponse<ReservationWithServices[]> = {
+      success: true,
+      data: reservations,
+      message:
+        reservations.length > 0
+          ? `${reservations.length} reserva(s) activa(s) encontrada(s).`
+          : "El usuario no tiene reservas activas.",
+    };
+
+    res.status(200).json(response);
+  } catch (error) {
+    const err = error as Error;
+    const response: ApiResponse<null> = {
+      success: false,
+      error: err.message,
+    };
+    res.status(500).json(response);
+  }
+}
+
+private async getWeeklyCalendar(req: Request, res: Response): Promise<void> {
+  try {
+    const query: WeeklyCalendarQuery = {
+      week_start: req.query.week_start as string,
+    };
+
+    const calendar = await this.service.getWeeklyCalendar(query);
+
+    const response: ApiResponse<WeeklyCalendar> = {
+      success: true,
+      data: calendar,
+      message: `Calendario de la semana del ${calendar.week_start} al ${calendar.week_end}.`,
+    };
+
+    res.status(200).json(response);
+  } catch (error) {
+    const err = error as Error;
+
+    const isBusinessError =
+      err.message.includes("requerido") ||
+      err.message.includes("Formato de fecha");
+
+    const response: ApiResponse<null> = {
+      success: false,
+      error: err.message,
+    };
+
+    res.status(isBusinessError ? 422 : 500).json(response);
+  }
+}
   
 
   
