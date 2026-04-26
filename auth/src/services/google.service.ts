@@ -23,27 +23,38 @@ class GoogleService {
     }
 
     async exchangeCode(code: string): Promise<GoogleUserInfo> {
-        logger.info(code);
-        const { tokens } = await this.client.getToken(code);
-        this.client.setCredentials(tokens);
+        try {
+            logger.info(`[Google] Intentando canjear código: ${code.substring(0, 10)}...`);
 
-        if (!tokens.id_token) {
-            throw new Error('No se recibió id_token de Google');
-        }
+            const cleanCode = decodeURIComponent(code.trim());
+            const { tokens } = await this.client.getToken(cleanCode);
+            logger.info('[Google] Tokens obtenidos exitosamente');
 
-        const verifier = new OAuth2Client(env.GOOGLE_CLIENT_ID);
-        const ticket = await verifier.verifyIdToken({
-            idToken: tokens.id_token,
-            audience: env.GOOGLE_CLIENT_ID,
-        });
+            this.client.setCredentials(tokens);
 
-        const payload = ticket.getPayload()!;
+            if (!tokens.id_token) {
+                throw new Error('No se recibió id_token de Google');
+            }
 
-        if (!payload) throw new Error('Token de Google inválido');
+            const verifier = new OAuth2Client(env.GOOGLE_CLIENT_ID);
+            const ticket = await verifier.verifyIdToken({
+                idToken: tokens.id_token,
+                audience: env.GOOGLE_CLIENT_ID,
+            });
 
-        return {
-            googleId: payload.sub,
-            email: payload.email!
+            const payload = ticket.getPayload()!;
+
+            if (!payload) throw new Error('Token de Google inválido');
+
+            logger.info(`[Google] Usuario autenticado: ${payload.email}`);
+            return {
+                googleId: payload.sub,
+                email: payload.email!
+            }
+        } catch (error: any) {
+            logger.error(`[Google] Error al canjear código: ${error.message}`);
+            logger.error(`[Google] Detalles: ${JSON.stringify(error)}`);
+            throw new Error('Error al autenticar con Google');
         }
     }
 }

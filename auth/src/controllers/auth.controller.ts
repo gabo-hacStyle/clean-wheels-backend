@@ -18,14 +18,29 @@ export const authController = {
                 res.status(400).json({ error: 'Código requerido' });
                 return;
             }
+
+            logger.info(`[Auth] Recibido código de Google: ${code.substring(0, 10)}...`);
             const result = await authService.handleGoogleCallback(code);
 
             res.status(200).json({
                 token: result.token
             });
-        } catch (err) {
+        } catch (err: any) {
             logger.error('Error en callback de Google', err);
-            res.status(401).json({ error: 'Error en la autenticación con Google' });
+            const errorMessage = err.message || 'Error en la autenticación con Google';
+
+            // Errores específicos de Google
+            if (errorMessage.includes('invalid_grant')) {
+                res.status(401).json({
+                    error: 'Código inválido o expirado. Por favor, intenta de nuevo.',
+                    details: 'Invalid grant error from Google'
+                });
+            }
+
+            res.status(401).json({
+                error: errorMessage,
+                type: err.name
+            });
         }
     },
 
