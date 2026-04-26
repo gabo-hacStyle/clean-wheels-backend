@@ -1,7 +1,8 @@
 import express from 'express';
 import helmet from 'helmet';
 import cors from 'cors';
-import morgan, { StreamOptions } from 'morgan';
+import type { StreamOptions } from 'morgan';
+import morgan from 'morgan';
 import rateLimit from "express-rate-limit";
 
 import { env } from '@config/env';
