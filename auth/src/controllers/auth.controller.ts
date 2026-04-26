@@ -3,13 +3,12 @@ import { authService } from "../services/auth.service";
 import logger from "@utils/logger";
 
 export const authController = {
-    // GET /auth/google
+
     googleLogin: (_req: Request, res: Response): void => {
         const url = authService.getGoogleAuthUrl();
         res.json({ url });
     },
 
-    // POST /auth/google
     googleCallback: async (req: Request, res: Response) => {
         try {
             const { code } = req.body;
