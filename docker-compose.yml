@@ -17,6 +17,9 @@ services:
       - "8080:8080"
     env_file:
       - ./api-gateway/.env
+    environment:
+      AUTH_SERVICE_URL: http://auth-service:8090
+      ALLOWED_ORIGINS: '*'
     depends_on:
       - auth-service
 
@@ -26,6 +29,8 @@ services:
       - "8090:8090"
     env_file:
       - ./auth/.env
+    environment:
+      DB_URL: postgresql://carswheels:carswheels123@postgres:5432/car_wheels_db
     depends_on:
       - postgres
 
