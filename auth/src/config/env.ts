@@ -7,6 +7,7 @@ const schema = Joi.object<EnvConfig>({
     NODE_ENV: Joi.string()
         .valid('development', 'production', 'test')
         .default('development'),
+    ALLOWED_ORIGINS: Joi.string(),
     JWT_SECRET: Joi.string().required(),
     JWT_EXPIRES_IN: Joi.string().default('7d'),
     DB_URL: Joi.string().required(),

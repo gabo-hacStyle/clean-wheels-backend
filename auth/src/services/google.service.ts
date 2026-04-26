@@ -1,6 +1,7 @@
 import { OAuth2Client } from 'google-auth-library';
 import { env } from '@config/env'
 import { GoogleUserInfo } from "../types";
+import logger from "@utils/logger";
 
 class GoogleService {
     private readonly client: OAuth2Client;
@@ -22,6 +23,7 @@ class GoogleService {
     }
 
     async exchangeCode(code: string): Promise<GoogleUserInfo> {
+        logger.info(code);
         const { tokens } = await this.client.getToken(code);
         this.client.setCredentials(tokens);
 

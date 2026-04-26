@@ -40,6 +40,7 @@ export interface LoginResult {
 export interface EnvConfig {
     PORT: number;
     NODE_ENV: string;
+    ALLOWED_ORIGINS: string;
     DB_URL: string;
     JWT_SECRET: string;
     JWT_EXPIRES_IN: string;

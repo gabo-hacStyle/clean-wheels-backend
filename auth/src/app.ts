@@ -17,19 +17,18 @@ app.use(
     }),
 );
 
-app.use(morgan('combined', { stream: { write: (msg) => logger.http(msg.trim()) } }));
+app.use(morgan('combined', { stream: { write: (msg) => logger.info(msg.trim()) } }));
 
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
 
-// Health check
 app.get('/health', (_req, res) => {
     res.status(200).json({ status: 'ok', service: 'auth' });
 });
 
-+app.use('/auth', authRoutes);
+app.use(authRoutes);
 
-+app.use((_req, res) => {
+app.use((_req, res) => {
     res.status(404).json({ error: 'Ruta no encontrada' });
 });
 

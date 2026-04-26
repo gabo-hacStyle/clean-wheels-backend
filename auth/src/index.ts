@@ -1,10 +1,8 @@
 import app from './app';
 import { env } from '@config/env';
-import { initializeDatabase } from '@config/database';
 import logger from './utils/logger';
 
 async function bootstrap(): Promise<void> {
-    await initializeDatabase();
 
     const server = app.listen(env.PORT, () => {
         logger.info(`Auth Service corriendo en el puerto ${env.PORT} en modo ${env.NODE_ENV}`);

@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "build": "tsc",
+    "build": "tsc && tsc-alias",
     "start": "node dist/index.js",
     "dev": "ts-node-dev --respawn --transpile-only -r tsconfig-paths/register src/index.ts",
     "lint": "eslint src/ --ext .ts",
@@ -39,6 +39,7 @@
     "eslint": "^10.2.1",
     "prettier": "^3.8.3",
     "ts-node-dev": "^2.0.0",
+    "tsc-alias": "^1.8.16",
     "typescript": "^6.0.3"
   }
 }
