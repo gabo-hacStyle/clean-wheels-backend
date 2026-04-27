@@ -1,4 +1,6 @@
 import ReservationRepository from "../repository/reservationRepository";
+import NotificationClient from "../infraestructure/email.client";
+import { NotificationType } from "../types";
 import {
   AvailabilityResult,
   CalendarDay,
@@ -21,11 +23,14 @@ import {
   WeeklyCalendarQuery,
 } from "../types";
 
+
 class ReservationService {
   private repository: ReservationRepository;
+  private notificationClient: NotificationClient;
 
   constructor() {
     this.repository = new ReservationRepository();
+    this.notificationClient = NotificationClient.getInstance();
   }
 
   async checkAvailability(
@@ -157,6 +162,11 @@ class ReservationService {
         vehicle_id,
         start,
         foundServices
+      );
+
+      await this.notificationClient.trigger(
+        reservation.id,
+        NotificationType.RESERVA_CREADA
       );
 
       return reservation;
@@ -309,6 +319,11 @@ class ReservationService {
       }
 
       await this.assertUserCanModify(user, reservation);
+
+      await this.notificationClient.trigger(
+        reservationId,
+        NotificationType.RESERVA_CANCELADA
+      );
 
       return await this.repository.cancelReservation(reservationId);
     } catch (error) {
@@ -470,6 +485,16 @@ class ReservationService {
         `No se encontró un usuario asociado al vehículo "${reservation.vehicle_id}".`
       );
     }
+
+    await this.notificationClient.trigger(
+      reservationId,
+      NotificationType.SERVICIO_FINALIZADO
+    );
+
+    await this.notificationClient.trigger(
+      reservationId,
+      NotificationType.SOLICITUD_FEEDBACK
+    );
 
     return await this.repository.completeReservationWithReceipt(
       reservationId,

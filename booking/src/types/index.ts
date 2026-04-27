@@ -192,3 +192,13 @@ export interface UpdateServiceBody {
   description?: string;
   duration?: number;
 }
+
+export enum NotificationType {
+  RESERVA_CREADA = "reserva_creada",
+  RESERVA_CANCELADA = "reserva_cancelada",
+  RECORDATORIO_24H = "recordatorio_24h",
+  SERVICIO_INICIADO = "servicio_iniciado",
+  SERVICIO_FINALIZADO = "servicio_finalizado",
+  SOLICITUD_FEEDBACK = "solicitud_feedback",
+  REPORTE_DIARIO = "reporte_diario",
+}

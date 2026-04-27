@@ -1,4 +1,4 @@
-import amqplib, { Connection, Channel } from "amqplib";
+import amqplib, { Channel, ChannelModel } from "amqplib";
 
 // Nombres de exchanges y queues — punto único de verdad para ambos MS
 export const EXCHANGES = {
@@ -19,7 +19,7 @@ export const ROUTING_KEYS = {
 
 class RabbitMQClient {
   private static instance: RabbitMQClient;
-  private connection: Connection | null = null;
+  private connection: ChannelModel | null = null;
   private channel: Channel | null = null;
   private readonly url: string;
 
@@ -36,21 +36,24 @@ class RabbitMQClient {
 
   public async connect(): Promise<void> {
     try {
-      this.connection = await amqplib.connect(this.url);
-      this.channel = await this.connection.createChannel();
+      const connection = await amqplib.connect(this.url);
+      const channel = await connection.createChannel();
+
+      this.connection = connection;
+      this.channel = channel;
 
       // Declarar exchange principal (topic para routing flexible)
-      await this.channel.assertExchange(
+      await channel.assertExchange(
         EXCHANGES.NOTIFICATIONS,
         "topic",
         { durable: true }
       );
 
       // Declarar queues
-      await this.channel.assertQueue(QUEUES.RESERVATION_EVENTS, {
+      await channel.assertQueue(QUEUES.RESERVATION_EVENTS, {
         durable: true,
       });
-      await this.channel.assertQueue(QUEUES.NOTIFICATION_RETRY, {
+      await channel.assertQueue(QUEUES.NOTIFICATION_RETRY, {
         durable: true,
         arguments: {
           // Los mensajes en retry esperan 5 min antes de volver a la queue principal
@@ -61,7 +64,7 @@ class RabbitMQClient {
 
       // Bindings: qué routing keys escucha cada queue
       for (const key of Object.values(ROUTING_KEYS)) {
-        await this.channel.bindQueue(
+        await channel.bindQueue(
           QUEUES.RESERVATION_EVENTS,
           EXCHANGES.NOTIFICATIONS,
           key
@@ -69,12 +72,12 @@ class RabbitMQClient {
       }
 
       // Manejo de cierre inesperado
-      this.connection.on("close", () => {
+      connection.on("close", () => {
         console.warn("[RabbitMQ] Conexión cerrada inesperadamente. Reconectando...");
         setTimeout(() => this.connect(), 5000);
       });
 
-      this.connection.on("error", (err: Error) => {
+      connection.on("error", (err: Error) => {
         console.error(`[RabbitMQ] Error en conexión: ${err.message}`);
       });
 
