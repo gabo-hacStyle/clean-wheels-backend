@@ -16,6 +16,10 @@ class ServiceController {
   private initRoutes(): void {
     // GET /services
     this.router.get("/", this.getAllServices.bind(this));
+    this.router.get("/admin",
+      requireGatewayAuth,
+      requireAdmin,
+      this.getAllServicesAdmin.bind(this)); // Ruta para obtener activos e inactivos para admin
     this.router.post("/",
       requireGatewayAuth,
       requireAdmin,
@@ -66,6 +70,27 @@ class ServiceController {
     }
   }
 
+
+  private async getAllServicesAdmin(_req: Request, res: Response): Promise<void> {
+    try {
+      const services: WashService[] = await this.service.getAllServicesAdmin();
+      const response: ApiResponse<WashService[]> = {
+        success: true,
+        data: services,
+        message: `${services.length} servicio(s) encontrado(s).`,
+      };
+      res.status(200).json(response);
+    }
+      catch (error) {
+        const err = error as Error;
+        const isBusinessError = err.message.includes("No hay servicios");
+        const response: ApiResponse<null> = {
+          success: false,
+          error: err.message,
+        };
+        res.status(isBusinessError ? 404 : 500).json(response);
+      }
+    }
   // Métodos:
 private async createService(req: Request, res: Response): Promise<void> {
   try {

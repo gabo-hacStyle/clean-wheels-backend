@@ -8,6 +8,22 @@ class ServiceRepository {
     this.db = DatabaseConnection.getInstance();
   }
 
+  async findAll(): Promise<WashService[]> {
+    try {
+      const rows = await this.db.query<WashService>(
+        `SELECT id, name, price, description, duration, is_active, created_at
+          FROM services
+          ORDER BY name ASC`
+      );
+      return rows;
+    } catch (error) {
+      const err = error as Error;
+      throw new Error(
+        `[ServiceRepository] Error obteniendo la lista completa de servicios: ${err.message}`
+      );
+    }
+  }
+
   async findAllActive(): Promise<WashService[]> {
     try {
       const rows = await this.db.query<WashService>(
@@ -116,8 +132,8 @@ async delete(serviceId: string): Promise<void> {
       `DELETE FROM services WHERE id = $1`,
       [serviceId]
     );
-    if ((result as any).length === 0) {
-      throw new Error(`Servicio "${serviceId}" no encontrado.`);
+    if (result.length === 0) {
+      console.log(`Servicio "${serviceId}" no encontrado para eliminar.`);
     }
   } catch (error) {
     const err = error as Error;

@@ -25,6 +25,21 @@ class WashServiceService {
     }
   }
 
+  async getAllServicesAdmin(): Promise<WashService[]> {
+    try {
+      const services = await this.repository.findAll();
+      if (services.length === 0) {
+        throw new Error("No hay servicios registrados en este momento.");
+      }
+      return services;
+    } catch (error) {
+      const err = error as Error;
+      throw new Error(
+        `[WashServiceService] Error al obtener los servicios para admin: ${err.message}`
+      );
+    }
+  }
+
   async createService(body: CreateServiceBody): Promise<WashService> {
   try {
     if (!body.name || body.price === undefined || !body.description || !body.duration) {
