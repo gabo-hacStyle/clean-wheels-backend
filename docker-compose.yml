@@ -1,0 +1,52 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: carswheels
+      POSTGRES_PASSWORD: carswheels123
+      POSTGRES_DB: car_wheels_db
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./database/schema.sql:/docker-entrypoint-initdb.d/01_schema.sql
+      - ./database/02_seed.sql:/docker-entrypoint-initdb.d/02_seed.sql
+
+  api_gateway:
+    build: ./api-gateway
+    ports:
+      - "8080:8080"
+    env_file:
+      - ./api-gateway/.env
+    environment:
+      AUTH_SERVICE_URL: http://auth-service:8090
+      ADMIN_SERVICE_URL: http://admin-service:9000
+      ALLOWED_ORIGINS: '*'
+    depends_on:
+      - auth-service
+      - admin-service
+
+  auth-service:
+    build: ./auth
+    ports:
+      - "8090:8090"
+    env_file:
+      - ./auth/.env
+    environment:
+      DB_URL: postgresql://carswheels:carswheels123@postgres:5432/car_wheels_db
+    depends_on:
+      - postgres
+
+  admin-service:
+    build: ./admin
+    ports:
+      - "9000:9000"
+    env_file:
+      - ./admin/.env
+    environment:
+      DB_URL: postgresql://carswheels:carswheels123@postgres:5432/car_wheels_db
+    depends_on:
+      - postgres
+
+volumes:
+  postgres_data:
