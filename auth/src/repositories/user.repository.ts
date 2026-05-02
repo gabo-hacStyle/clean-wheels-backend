@@ -1,4 +1,3 @@
-// user.repository.ts corregido
 import { pool } from '@config/database';
 import type { User, UserRole } from '../types';
 

@@ -36,7 +36,7 @@ class AuthService {
     }
 
     const token = jwtUtil.sign({
-      sub: user.id,
+      sub: user.id.toString(),
       email: user.email,
       rol: user.rol,
     });

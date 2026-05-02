@@ -1,8 +1,8 @@
-export type UserRole = 'CLIENT' | 'ADMIN' | 'VISITANT';
+export type UserRole = 'CLIENT' | 'ADMIN' | 'GUEST';
 export type AuthProvider = 'local' | 'google';
 
 export interface User {
-  id: string;
+  id: number;
   email: string;
   rol: UserRole;
   cedula: string | null;
@@ -21,15 +21,6 @@ export interface JwtPayload {
 export interface GoogleUserInfo {
   googleId: string;
   email: string;
-}
-
-export interface RegisterDTO {
-  googleId: string;
-  cedula: string;
-}
-
-export interface LoginDTO {
-  googleId: string;
 }
 
 export interface LoginResult {
