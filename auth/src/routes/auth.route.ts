@@ -6,8 +6,8 @@ const router = Router();
 
 router.get('/google/url', authController.googleLogin);
 router.post('/google/callback', authController.googleCallback);
+router.post('/guest', authController.guestSession);
 
 router.get('/me', authenticate, authController.me);
-router.patch('/profile', authenticate, authController.updateProfile);
 
 export default router;

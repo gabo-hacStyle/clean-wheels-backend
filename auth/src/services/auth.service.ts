@@ -28,8 +28,7 @@ class AuthService {
       user = await userRepository.create({
         email: googleUser.email,
         googleId: googleUser.googleId,
-        role: role,
-        cedula: '',
+        role: role
       });
 
       logger.info(`Nuevo usuario creado: ${googleUser.email} con rol ${role}`);
@@ -43,29 +42,24 @@ class AuthService {
 
     logger.info(`Login exitoso ${user.email} (${user.rol}`);
     return {
-      token,
-      user: { id: user.id, email: user.email, rol: user.rol },
+      token
     };
-  }
-
-  async validateToken(token: string) {
-    return jwtUtil.verify(token);
   }
 
   async getUserById(id: string) {
     return userRepository.findById(id);
   }
 
-  async updateCedula(userId: string, cedula: string) {
-    const user = await userRepository.updateCedula(userId, cedula);
-    if (!user) throw new Error('Usuario no encontrado');
+  async guestLogin(): Promise<LoginResult> {
+    const token = jwtUtil.sign({
+      sub: "anonymous",
+      email: "undefined",
+      rol: "GUEST"
+    }, "1d");
 
     return {
-      id: user.id,
-      email: user.email,
-      rol: user.rol,
-      cedula: user.cedula,
-    };
+      token
+    }
   }
 }
 

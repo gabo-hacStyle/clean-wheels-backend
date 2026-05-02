@@ -5,7 +5,6 @@ export interface User {
   id: number;
   email: string;
   rol: UserRole;
-  cedula: string | null;
   provider?: AuthProvider;
   provider_id?: string;
 }
@@ -25,7 +24,6 @@ export interface GoogleUserInfo {
 
 export interface LoginResult {
   token: string;
-  user: Pick<User, 'id' | 'email' | 'rol'>;
 }
 
 export interface EnvConfig {
