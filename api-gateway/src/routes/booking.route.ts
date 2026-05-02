@@ -4,6 +4,7 @@ import { bookingProxy } from '../proxy/booking.proxy';
 
 const router = Router();
 
-router.use(authenticate, requireRole('CLIENT', 'ADMIN'), bookingProxy);
+router.get('/system/health', bookingProxy);
+router.use(authenticate, requireRole('CLIENT', 'ADMIN', 'GUEST'), bookingProxy);
 
 export default router;

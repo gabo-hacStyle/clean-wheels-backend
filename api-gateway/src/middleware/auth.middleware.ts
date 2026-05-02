@@ -28,9 +28,9 @@ export const authenticate = (req: Request, res: Response, next: NextFunction): v
 };
 
 export const requireRole =
-  (...roles: JwtPayload['role'][]) =>
+  (...roles: JwtPayload['rol'][]) =>
   (req: Request, res: Response, next: NextFunction) => {
-    if (!req.user || !roles.includes(req.user.role)) {
+    if (!req.user || !roles.includes(req.user.rol)) {
       res.status(403).json({ error: 'Acceso denegado' });
       return;
     }
