@@ -1,8 +1,8 @@
-import {FeedbackItem, FeedbackSummary, IngresosSummary, PeriodoQuery} from "../types";
+import {FeedbackItem, FeedbackSummary, IngressSummary, PeriodQuery} from "../types";
 import { adminRepository } from "../repositories/admin.repository";
 
 class AdminService {
-    async getFeedbackSummary(query: PeriodoQuery): Promise<FeedbackSummary> {
+    async getFeedbackSummary(query: PeriodQuery): Promise<FeedbackSummary> {
         try {
             this.validatePeriodo(query);
 
@@ -19,10 +19,20 @@ class AdminService {
                 )
             }
 
-            const total = items.length;
+            const rating_average = Math.round(
+                (items.reduce((sum, i) => sum + Number(i.rating), 0) / items.length) * 100
+            ) / 100;
+
+            const distribution: Record<number, number> = { 1:0, 2:0, 3:0 , 4:0, 5:0}
+
+            for (const item of items) {
+                distribution[Number(item.rating)]++;
+            }
 
             return {
-                total: total,
+                total: items.length,
+                rating_average,
+                distribution,
                 comments: items
             };
         } catch (error) {
@@ -33,14 +43,14 @@ class AdminService {
         }
     }
 
-    async getIncomesReport(query: PeriodoQuery): Promise<IngresosSummary> {
+    async getIncomesReport(query: PeriodQuery): Promise<IngressSummary> {
         try {
             this.validatePeriodo(query);
             const from = new Date(query.from);
             const to = new Date(query.to);
             to.setHours(23, 59, 59, 999);
 
-            const details = await adminRepository.findIngresosByPeriod(from, to);
+            const details = await adminRepository.findIngressByPeriod(from, to);
 
             if (details.length === 0) {
                 throw new Error(
@@ -66,7 +76,7 @@ class AdminService {
         }
     }
 
-    private validatePeriodo(query: PeriodoQuery): void {
+    private validatePeriodo(query: PeriodQuery): void {
         if (!query.from || !query.to) {
             throw new Error("Los parámetros 'from' y 'to' son requeridos (formato: YYYY-MM-DD).");
         }

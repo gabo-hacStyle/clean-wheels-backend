@@ -1,12 +1,12 @@
 import type { Request, Response } from 'express';
 import logger from "@utils/logger";
-import { ApiResponse, FeedbackSummary, IngresosSummary, PeriodoQuery } from "../types";
+import { ApiResponse, FeedbackSummary, IngressSummary, PeriodQuery } from "../types";
 import { adminService } from "../services/admin.service";
 
 export const adminController = {
     getFeedback: async (req: Request, res: Response) => {
         try {
-            const query: PeriodoQuery = {
+            const query: PeriodQuery = {
                 from: req.query.from as string,
                 to: req.query.to as string,
             };
@@ -40,14 +40,14 @@ export const adminController = {
 
     getIncomes: async (req: Request, res: Response) => {
         try {
-            const query: PeriodoQuery = {
+            const query: PeriodQuery = {
                 from: req.query.from as string,
                 to: req.query.to as string,
             };
 
-            const report: IngresosSummary = await adminService.getIncomesReport(query);
+            const report: IngressSummary = await adminService.getIncomesReport(query);
 
-            const response: ApiResponse<IngresosSummary> = {
+            const response: ApiResponse<IngressSummary> = {
                 success: true,
                 data: report,
                 message: `Ingresos del periodo ${query.from} al ${query.to}. Total: $${report.total_incomes}.`,
