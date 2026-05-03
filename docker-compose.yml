@@ -10,7 +10,7 @@ services:
     volumes:
       - postgres_data:/var/lib/postgresql/data
       - ./database/schema.sql:/docker-entrypoint-initdb.d/01_schema.sql
-      - ./database/02_seed.sql:/docker-entrypoint-initdb.d/02_seed.sql
+      # - ./database/02_seed.sql:/docker-entrypoint-initdb.d/02_seed.sql
 
   api_gateway:
     build: ./api-gateway
@@ -28,8 +28,8 @@ services:
 
   auth-service:
     build: ./auth
-    ports:
-      - "8090:8090"
+    expose:
+      - "8090"
     env_file:
       - ./auth/.env
     environment:
@@ -39,8 +39,8 @@ services:
 
   admin-service:
     build: ./admin
-    ports:
-      - "9000:9000"
+    expose:
+      - "9000"
     env_file:
       - ./admin/.env
     environment:

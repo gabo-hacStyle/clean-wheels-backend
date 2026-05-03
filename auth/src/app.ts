@@ -23,7 +23,7 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
 
 app.get('/health', (_req, res) => {
-  res.status(200).json({ status: 'ok', service: 'auth' });
+  res.status(200).json({ status: 'ok', service: 'auth-service' });
 });
 
 app.use(authRoutes);

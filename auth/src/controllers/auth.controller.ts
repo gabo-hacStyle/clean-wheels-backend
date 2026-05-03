@@ -42,10 +42,16 @@ export const authController = {
     }
   },
 
-  // GET /auth/me
   me: async (req: Request, res: Response): Promise<void> => {
     try {
       const userId = (req as any).user.sub;
+      if (userId === "anonymous") {
+        res.json({
+          rol: "GUEST"
+        });
+        return;
+      }
+
       const user = await authService.getUserById(userId);
       if (!user) {
         res.status(404).json({ error: 'Usuario no encontrado' });
@@ -55,7 +61,6 @@ export const authController = {
         id: user.id,
         email: user.email,
         rol: user.rol,
-        cedula: user.cedula,
       });
     } catch (err) {
       logger.error('Error en getProfile', err);
@@ -63,22 +68,8 @@ export const authController = {
     }
   },
 
-  updateProfile: async (req: Request, res: Response): Promise<void> => {
-    try {
-      const userId = (req as any).user.sub;
-      const { cedula } = req.body;
-
-      if (!cedula) {
-        res.status(404).json({ error: 'Cédula requerida' });
-        return;
-      }
-
-      const updated = await authService.updateCedula(userId, cedula);
-      res.json(updated);
-    } catch (err: any) {
-      logger.error('Error en update profile', err);
-      logger.error('Error en update profile: ' + err.message);
-      res.status(500).json({ error: 'Error interno' });
-    }
-  },
+  guestSession: async (_req: Request, res: Response) => {
+    const token = await authService.guestLogin();
+    res.json({ token })
+  }
 };

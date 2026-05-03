@@ -1,5 +1,5 @@
 import { pool } from "@config/database";
-import {FeedbackItem, IngresoItem} from "../types";
+import {FeedbackItem, IngressItem} from "../types";
 
 class AdminRepository {
     async findFeedbackByPeriod(
@@ -7,28 +7,27 @@ class AdminRepository {
         to: Date
     ): Promise<FeedbackItem[]> {
         const { rows } = await pool.query<FeedbackItem>(
-            `SELECT f.reservation_id, f.feedback, f.created_at,
-                v.placa AS vehicle_placa, u.email AS user_email
+            `SELECT f.reservation_id, f.rating, f.feedback, f.created_at,
+                v.placa AS vehicle_license_plate, u.email AS user_email
             FROM feedback f
             INNER JOIN reservations r ON r.id = f.reservation_id
             INNER JOIN vehicles v ON v.id = r.vehicle_id
             INNER JOIN vehicles_users vu ON vu.vehicle_id = v.id
             INNER JOIN users u ON u.id = vu.user_id
-            WHERE f.created_at >= $1
-                AND f.created_at < $2
+            WHERE f.created_at >= $1 AND f.created_at < $2
             ORDER BY f.created_at DESC`,
             [from, to]
         );
         return rows;
     }
 
-    async findIngresosByPeriod(
+    async findIngressByPeriod(
         from: Date,
         to: Date
-    ): Promise<IngresoItem[]> {
-        const { rows } = await pool.query<IngresoItem>(
+    ): Promise<IngressItem[]> {
+        const { rows } = await pool.query<IngressItem>(
             `SELECT rc.id AS receip_id, rc.reservation_id,
-                u.email AS user_email, v.placa AS vehicle_placa, rc.precio_final,
+                u.email AS user_email, v.placa AS vehicle_license_plate, rc.precio_final AS price_final,
                 rc.payment_method, rc.payment_datetime, STRING_AGG(s.name, ', ' ORDER BY s.name) AS services
             FROM receipts rc
             INNER JOIN reservations r ON r.id = rc.reservation_id

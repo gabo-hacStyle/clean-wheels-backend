@@ -6,12 +6,12 @@ import logger from '@utils/logger';
 export const bookingProxy = createProxyMiddleware<Request>({
   target: env.BOOKING_SERVICE_URL,
   changeOrigin: true,
-  pathRewrite: { '^/api/bookings': '' },
+  pathRewrite: { '^/api/booking': '' },
   on: {
     proxyReq: (proxyReq, req) => {
       if (req.user) {
         proxyReq.setHeader('X-User-Id', req.user.sub);
-        proxyReq.setHeader('X-User-Role', req.user.role);
+        proxyReq.setHeader('X-User-Role', req.user.rol);
         proxyReq.setHeader('X-User-Email', req.user.email);
       }
       fixRequestBody(proxyReq, req);

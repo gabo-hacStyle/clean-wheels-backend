@@ -1,225 +1,148 @@
--- EXTENSIONES
-CREATE EXTENSION IF NOT EXISTS pgcrypto;
+-- =============================================================================
+-- CARWASH - Script SQL completo
+-- PostgreSQL | DDL + DML + Rollback
+-- =============================================================================
 
-DO $$
-BEGIN
-    IF NOT EXISTS (
-        SELECT 1 FROM pg_type WHERE typname = 'user_role'
-    ) THEN
-CREATE TYPE user_role AS ENUM ('CLIENT', 'ADMIN', 'GUEST');
-END IF;
+-- =============================================================================
+-- ROLLBACK (ejecutar en orden inverso para limpiar todo)
+-- =============================================================================
 
-    IF NOT EXISTS (
-        SELECT 1 FROM pg_type WHERE typname = 'reservation_status'
-    ) THEN
-CREATE TYPE reservation_status AS ENUM (
-            'PENDING',
-            'CONFIRMED',
-            'IN_PROGRESS',
-            'COMPLETED',
-            'CANCELLED'
-        );
-END IF;
+-- DROP TABLE IF EXISTS feedback             CASCADE;
+-- DROP TABLE IF EXISTS receipts             CASCADE;
+-- DROP TABLE IF EXISTS reservations_services CASCADE;
+-- DROP TABLE IF EXISTS reservations         CASCADE;
+-- DROP TABLE IF EXISTS notifications        CASCADE;
+-- DROP TABLE IF EXISTS vehicles_users       CASCADE;
+-- DROP TABLE IF EXISTS vehicles             CASCADE;
+-- DROP TABLE IF EXISTS services             CASCADE;
+-- DROP TABLE IF EXISTS categories           CASCADE;
+-- DROP TABLE IF EXISTS users               CASCADE;
 
---     IF NOT EXISTS (
---         SELECT 1 FROM pg_type WHERE typname = 'payment_method_type'
---     ) THEN
--- CREATE TYPE payment_method_type AS ENUM (
---             'CASH',
---             'CARD',
---             'TRANSFER',
---             'NEQUI',
---             'DAVIPLATA'
---         );
--- END IF;
-END $$;
+-- =============================================================================
+-- DDL
+-- =============================================================================
 
--- USERS
-CREATE TABLE IF NOT EXISTS users (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    email VARCHAR(255) UNIQUE NOT NULL,
-    provider VARCHAR(20),
-    provider_id VARCHAR(255),
-    rol user_role NOT NULL DEFAULT 'CLIENT',
-    cedula VARCHAR(20) UNIQUE,
-    created_at TIMESTAMP DEFAULT NOW()
-    );
+CREATE TABLE users (
+                       id          BIGINT          GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+                       email       VARCHAR(255)    NOT NULL UNIQUE,
+                       rol         VARCHAR(20)     NOT NULL DEFAULT 'CLIENT'
+                           CHECK (rol IN ('CLIENT', 'ADMIN', 'GUEST')),
+                       provider    VARCHAR(20)     NOT NULL DEFAULT 'google'
+                           CHECK (provider IN ('google', 'local')),
+                       provider_id VARCHAR(255)    NOT NULL,
+                       created_at  TIMESTAMPTZ     NOT NULL DEFAULT NOW(),
+                       updated_at  TIMESTAMPTZ     NOT NULL DEFAULT NOW()
+);
 
--- VEHICLES
-CREATE TABLE IF NOT EXISTS vehicles (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    placa VARCHAR(10) UNIQUE NOT NULL,
-    marca VARCHAR(100) NOT NULL,
-    modelo VARCHAR(100) NOT NULL,
-    created_at TIMESTAMP DEFAULT NOW()
-    );
+CREATE TABLE categories (
+                            id          BIGINT          GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+                            name        VARCHAR(100)    NOT NULL UNIQUE,
+                            description TEXT,
+                            created_at  TIMESTAMPTZ     NOT NULL DEFAULT NOW(),
+                            updated_at  TIMESTAMPTZ     NOT NULL DEFAULT NOW()
+);
 
+CREATE TABLE services (
+                          id          BIGINT          GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+                          name        VARCHAR(150)    NOT NULL,
+                          price       NUMERIC(10,2)   NOT NULL CHECK (price >= 0),
+                          description TEXT,
+                          url         VARCHAR(500),
+                          is_active   BOOLEAN         NOT NULL DEFAULT TRUE,
+                          duration    INTEGER         NOT NULL CHECK (duration > 0), -- minutos
+                          category_id BIGINT          NOT NULL REFERENCES categories(id),
+                          created_at  TIMESTAMPTZ     NOT NULL DEFAULT NOW(),
+                          updated_at  TIMESTAMPTZ     NOT NULL DEFAULT NOW()
+);
 
--- RELACION VEHICULOS / USUARIOS
-CREATE TABLE IF NOT EXISTS vehicles_users (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+CREATE TABLE vehicles (
+                          id          BIGINT          GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+                          placa       VARCHAR(10)     NOT NULL UNIQUE,
+                          marca       VARCHAR(80)     NOT NULL,
+                          modelo      VARCHAR(80)     NOT NULL,
+                          created_at  TIMESTAMPTZ     NOT NULL DEFAULT NOW(),
+                          updated_at  TIMESTAMPTZ     NOT NULL DEFAULT NOW()
+);
 
-    vehicle_id UUID NOT NULL,
-    user_id UUID NOT NULL,
+CREATE TABLE vehicles_users (
+                                id          BIGINT          GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+                                vehicle_id  BIGINT          NOT NULL REFERENCES vehicles(id),
+                                user_id     BIGINT          NOT NULL REFERENCES users(id),
+                                created_at  TIMESTAMPTZ     NOT NULL DEFAULT NOW(),
+                                updated_at  TIMESTAMPTZ     NOT NULL DEFAULT NOW(),
+                                UNIQUE (vehicle_id, user_id)
+);
 
-    created_at TIMESTAMP DEFAULT NOW(),
+CREATE TABLE reservations (
+                              id             BIGINT        GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+                              vehicle_id     BIGINT        NOT NULL REFERENCES vehicles(id),
+                              datetime       TIMESTAMPTZ   NOT NULL,
+                              status         VARCHAR(20)   NOT NULL DEFAULT 'pendiente'
+                                  CHECK (status IN ('pendiente','confirmada','en_proceso','finalizada','cancelada')),
+                              total_price    NUMERIC(10,2) NOT NULL CHECK (total_price >= 0),
+                              total_duration INTEGER       NOT NULL CHECK (total_duration > 0),
+                              created_at     TIMESTAMPTZ   NOT NULL DEFAULT NOW(),
+                              updated_at     TIMESTAMPTZ   NOT NULL DEFAULT NOW()
+);
 
-    CONSTRAINT fk_vehicle_user_vehicle
-    FOREIGN KEY (vehicle_id)
-    REFERENCES vehicles(id)
-    ON DELETE CASCADE,
+CREATE TABLE reservations_services (
+                                       id             BIGINT  GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+                                       reservation_id BIGINT  NOT NULL REFERENCES reservations(id),
+                                       service_id     BIGINT  NOT NULL REFERENCES services(id),
+                                       created_at     TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+                                       updated_at     TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+                                       UNIQUE (reservation_id, service_id)
+);
 
-    CONSTRAINT fk_vehicle_user_user
-    FOREIGN KEY (user_id)
-    REFERENCES users(id)
-    ON DELETE CASCADE,
+CREATE TABLE notifications (
+                               id             BIGINT        GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+                               user_id        BIGINT        NOT NULL REFERENCES users(id),
+                               vehicle_id     BIGINT        NOT NULL REFERENCES vehicles(id),
+                               reservation_id BIGINT        NOT NULL REFERENCES reservations(id),
+                               type           VARCHAR(40)   NOT NULL
+                                   CHECK (type IN (
+                                                   'reserva_creada','reserva_cancelada','recordatorio_24h',
+                                                   'servicio_iniciado','servicio_finalizado',
+                                                   'solicitud_feedback','reporte_diario'
+                                       )),
+                               channel        VARCHAR(20)   NOT NULL DEFAULT 'email'
+                                   CHECK (channel IN ('email')),
+                               status         VARCHAR(20)   NOT NULL DEFAULT 'pendiente'
+                                   CHECK (status IN ('pendiente','enviada','fallida')),
+                               scheduled_at   TIMESTAMPTZ   NOT NULL,
+                               sent_at        TIMESTAMPTZ,
+                               created_at     TIMESTAMPTZ   NOT NULL DEFAULT NOW(),
+                               updated_at     TIMESTAMPTZ   NOT NULL DEFAULT NOW()
+);
 
-    CONSTRAINT uq_vehicle_user UNIQUE(vehicle_id, user_id)
-    );
+CREATE TABLE receipts (
+                          id               BIGINT        GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+                          user_id          BIGINT        NOT NULL REFERENCES users(id),
+                          reservation_id   BIGINT        NOT NULL REFERENCES reservations(id) UNIQUE,
+                          discount         NUMERIC(10,2) NOT NULL DEFAULT 0 CHECK (discount >= 0),
+                          precio_final     NUMERIC(10,2) NOT NULL CHECK (precio_final >= 0),
+                          payment_method   VARCHAR(20)   NOT NULL
+                              CHECK (payment_method IN ('efectivo','tarjeta','transferencia')),
+                          payment_datetime TIMESTAMPTZ   NOT NULL DEFAULT NOW(),
+                          created_at       TIMESTAMPTZ   NOT NULL DEFAULT NOW(),
+                          updated_at       TIMESTAMPTZ   NOT NULL DEFAULT NOW()
+);
 
--- SERVICES
-CREATE TABLE IF NOT EXISTS services (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    name VARCHAR(150) UNIQUE NOT NULL,
-    price NUMERIC(12,2) NOT NULL CHECK (price >= 0),
-    description TEXT,
-    created_at TIMESTAMP DEFAULT NOW()
-    );
+CREATE TABLE feedback (
+                          id             BIGINT  GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+                          reservation_id BIGINT  NOT NULL REFERENCES reservations(id) UNIQUE,
+                          rating         INTEGER NOT NULL CHECK (rating BETWEEN 1 AND 5),
+                          feedback       TEXT    NOT NULL,
+                          created_at     TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+                          updated_at     TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
 
--- RESERVATIONS
-CREATE TABLE IF NOT EXISTS reservations (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-
-    vehicle_id UUID NOT NULL,
-
-    datetime TIMESTAMP NOT NULL,
-
-    status reservation_status NOT NULL DEFAULT 'PENDING',
-
-    total_price NUMERIC(12,2) NOT NULL DEFAULT 0 CHECK (total_price >= 0),
-
-    total_duration INTEGER NOT NULL DEFAULT 0 CHECK (total_duration >= 0),
-
-    created_at TIMESTAMP DEFAULT NOW(),
-
-    CONSTRAINT fk_reservation_vehicle
-    FOREIGN KEY (vehicle_id)
-    REFERENCES vehicles(id)
-    ON DELETE RESTRICT
-    );
-
--- RESERVATION SERVICES
-CREATE TABLE IF NOT EXISTS reservations_services (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-
-    reservation_id UUID NOT NULL,
-    service_id UUID NOT NULL,
-
-    created_at TIMESTAMP DEFAULT NOW(),
-
-    CONSTRAINT fk_rs_reservation
-    FOREIGN KEY (reservation_id)
-    REFERENCES reservations(id)
-    ON DELETE CASCADE,
-
-    CONSTRAINT fk_rs_service
-    FOREIGN KEY (service_id)
-    REFERENCES services(id)
-    ON DELETE RESTRICT,
-
-    CONSTRAINT uq_reservation_service UNIQUE(reservation_id, service_id)
-    );
-
--- FEEDBACK
-CREATE TABLE IF NOT EXISTS feedback (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-
-    reservation_id UUID UNIQUE NOT NULL,
-    feedback TEXT NOT NULL,
-
-    created_at TIMESTAMP DEFAULT NOW(),
-
-    CONSTRAINT fk_feedback_reservation
-    FOREIGN KEY (reservation_id)
-    REFERENCES reservations(id)
-    ON DELETE CASCADE
-    );
-
--- RECEIPTS
-CREATE TABLE IF NOT EXISTS receipts (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-
-    user_id UUID NOT NULL,
-    reservation_id UUID UNIQUE NOT NULL,
-
-    discount NUMERIC(12,2) NOT NULL DEFAULT 0 CHECK (discount >= 0),
-
-    precio_final NUMERIC(12,2) NOT NULL CHECK (precio_final >= 0),
-
-    payment_method VARCHAR(255),
-
-    payment_datetime TIMESTAMP DEFAULT NOW(),
-
-    created_at TIMESTAMP DEFAULT NOW(),
-
-    CONSTRAINT fk_receipt_user
-    FOREIGN KEY (user_id)
-    REFERENCES users(id)
-    ON DELETE RESTRICT,
-
-    CONSTRAINT fk_receipt_reservation
-    FOREIGN KEY (reservation_id)
-    REFERENCES reservations(id)
-    ON DELETE CASCADE
-    );
-
--- NOTIFICATIONS
-CREATE TABLE IF NOT EXISTS notifications (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-
-    user_id UUID NOT NULL,
-    vehicle_id UUID NOT NULL,
-    reservation_id UUID NOT NULL,
-
-    message TEXT,
-    is_read BOOLEAN DEFAULT FALSE,
-
-    created_at TIMESTAMP DEFAULT NOW(),
-
-    CONSTRAINT fk_notification_user
-    FOREIGN KEY (user_id)
-    REFERENCES users(id)
-    ON DELETE CASCADE,
-
-    CONSTRAINT fk_notification_vehicle
-    FOREIGN KEY (vehicle_id)
-    REFERENCES vehicles(id)
-    ON DELETE CASCADE,
-
-    CONSTRAINT fk_notification_reservation
-    FOREIGN KEY (reservation_id)
-    REFERENCES reservations(id)
-    ON DELETE CASCADE
-    );
-
--- ÍNDICES
-CREATE INDEX IF NOT EXISTS idx_users_email
-    ON users(email);
-
-CREATE INDEX IF NOT EXISTS idx_users_cedula
-    ON users(cedula);
-
-CREATE INDEX IF NOT EXISTS idx_vehicles_placa
-    ON vehicles(placa);
-
-CREATE INDEX IF NOT EXISTS idx_reservations_datetime
-    ON reservations(datetime);
-
-CREATE INDEX IF NOT EXISTS idx_reservations_status
-    ON reservations(status);
-
-CREATE INDEX IF NOT EXISTS idx_notifications_user
-    ON notifications(user_id);
-
-CREATE INDEX IF NOT EXISTS idx_receipts_user
-    ON receipts(user_id);
+-- Índices útiles para las queries más frecuentes
+CREATE INDEX idx_reservations_datetime    ON reservations(datetime);
+CREATE INDEX idx_reservations_status      ON reservations(status);
+CREATE INDEX idx_reservations_vehicle     ON reservations(vehicle_id);
+CREATE INDEX idx_vehicles_users_user      ON vehicles_users(user_id);
+CREATE INDEX idx_vehicles_users_vehicle   ON vehicles_users(vehicle_id);
+CREATE INDEX idx_res_services_reservation ON reservations_services(reservation_id);
+CREATE INDEX idx_services_category        ON services(category_id);
+CREATE INDEX idx_notifications_reservation ON notifications(reservation_id);

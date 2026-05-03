@@ -4,6 +4,7 @@ import { adminProxy } from '../proxy/admin.proxy';
 
 const router = Router();
 
+router.get('/health', adminProxy);
 router.use(authenticate, requireRole('ADMIN'), adminProxy);
 
 export default router;

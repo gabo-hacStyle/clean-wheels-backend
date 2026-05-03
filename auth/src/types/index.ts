@@ -1,11 +1,10 @@
-export type UserRole = 'CLIENT' | 'ADMIN' | 'VISITANT';
+export type UserRole = 'CLIENT' | 'ADMIN' | 'GUEST';
 export type AuthProvider = 'local' | 'google';
 
 export interface User {
-  id: string;
+  id: number;
   email: string;
   rol: UserRole;
-  cedula: string | null;
   provider?: AuthProvider;
   provider_id?: string;
 }
@@ -23,18 +22,8 @@ export interface GoogleUserInfo {
   email: string;
 }
 
-export interface RegisterDTO {
-  googleId: string;
-  cedula: string;
-}
-
-export interface LoginDTO {
-  googleId: string;
-}
-
 export interface LoginResult {
   token: string;
-  user: Pick<User, 'id' | 'email' | 'rol'>;
 }
 
 export interface EnvConfig {

@@ -1,12 +1,7 @@
-export enum UserRole {
-    CLIENT = "cliente",
-    ADMIN = "admin",
-    GUEST = "visitante",
-}
-
-export interface GatewayUser {
-    id: string;
-    role: UserRole;
+export enum PaymentMethod {
+    EFECTIVO = "efectivo",
+    TARJETA = "tarjeta",
+    TRANSFERENCIA = "transferencia",
 }
 
 export interface ApiResponse<T> {
@@ -18,37 +13,38 @@ export interface ApiResponse<T> {
 
 export interface FeedbackSummary {
     total: number;
-    // promedio_rating: number;
-    // distribucion: Record<number, number>; // { 1: 2, 2: 0, 3: 1, 4: 5, 5: 10 }
+    rating_average: number;
+    distribution: Record<number, number>;
     comments: FeedbackItem[];
 }
 
 export interface FeedbackItem {
-    reservation_id: string;
+    reservation_id: number;
+    rating: number;
     feedback: string;
     created_at: Date;
-    vehicle_placa: string;
+    vehicle_license_plate: string;
     user_email: string;
 }
 
-export interface IngresosSummary {
+export interface IngressSummary {
     total_incomes: number;
     total_reservations: number;
-    details: IngresoItem[];
+    details: IngressItem[];
 }
 
-export interface IngresoItem {
-    receipt_id: string;
-    reservation_id: string;
+export interface IngressItem {
+    receipt_id: number;
+    reservation_id: number;
     user_email: string;
     vehicle_license_plate: string;
     price_final: number;
-    payment_method: string;
+    payment_method: PaymentMethod;
     payment_datetime: Date;
-    services:    string;
+    services: string;
 }
 
-export interface PeriodoQuery {
+export interface PeriodQuery {
     from: string; // ISO date "2025-01-01"
     to: string;   // ISO date "2025-01-31"
 }

@@ -11,7 +11,6 @@ import logger from '@utils/logger';
 import authRoute from '@routes/auth.route';
 import adminRoutes from '@routes/admin.routes';
 import bookingRoute from '@routes/booking.route';
-import { notificationsProxy } from './proxy/notifications.proxy';
 
 const app = express();
 
@@ -44,7 +43,6 @@ app.use(express.json());
 app.use('/api/auth', authRoute);
 app.use('/api/admin', adminRoutes);
 app.use('/api/booking', bookingRoute);
-app.use('/api/notification', notificationsProxy);
 
 app.get('/health', (_req, res) => {
   res.json({ status: 'ok', service: 'api-gateway' });
