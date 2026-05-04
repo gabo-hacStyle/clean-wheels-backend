@@ -1,16 +1,4 @@
 services:
-  postgres:
-    image: postgres:16-alpine
-    environment:
-      POSTGRES_USER: carswheels
-      POSTGRES_PASSWORD: carswheels123
-      POSTGRES_DB: car_wheels_db
-    ports:
-      - "5432:5432"
-    volumes:
-      - postgres_data:/var/lib/postgresql/data
-      - ./database/schema.sql:/docker-entrypoint-initdb.d/01_schema.sql
-      # - ./database/02_seed.sql:/docker-entrypoint-initdb.d/02_seed.sql
 
   api_gateway:
     build: ./api-gateway
@@ -19,34 +7,95 @@ services:
     env_file:
       - ./api-gateway/.env
     environment:
+      PORT: 8080
+      NODE_ENV: development
+      JWT_SECRET: ${JWT_SECRET}
       AUTH_SERVICE_URL: http://auth-service:8090
       ADMIN_SERVICE_URL: http://admin-service:9000
-      ALLOWED_ORIGINS: '*'
+      BOOKING_SERVICE_URL: http://booking-service:9010
+      NOTIFICATIONS_SERVICE_URL: http://notifications-service:9020
+      ALLOWED_ORIGINS: http://localhost:3000
     depends_on:
       - auth-service
       - admin-service
+      - booking-service
+  
 
   auth-service:
     build: ./auth
-    expose:
-      - "8090"
+    ports:
+      - "8090:8090"
     env_file:
       - ./auth/.env
     environment:
-      DB_URL: postgresql://carswheels:carswheels123@postgres:5432/car_wheels_db
-    depends_on:
-      - postgres
+      DB_URL: ${DB_URL}
+      PORT: 8090
+      NODE_ENV: development
+      ALLOWED_ORIGINS: http://localhost:8080
+      JWT_SECRET: ${JWT_SECRET}
+      JWT_EXPIRES_IN: 7d
+      GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID}
+      GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET}
+      GOOGLE_REDIRECT_URI: http://localhost:8080/google/callback
+      ADMIN_EMAILS: clean.wheels.project@gmail.com
+
+
 
   admin-service:
     build: ./admin
-    expose:
-      - "9000"
+    ports:
+      - "9000:9000"
     env_file:
       - ./admin/.env
     environment:
-      DB_URL: postgresql://carswheels:carswheels123@postgres:5432/car_wheels_db
+      PORT: 9010
+      DB_URL: ${DB_URL}
     depends_on:
       - postgres
+  
 
-volumes:
-  postgres_data:
+  booking-service:
+    build: ./booking
+    ports:
+      - "9010:9010"
+    env_file:
+      - ./booking/.env
+    environment:
+      PORT: 9000
+      DB_URL: ${DB_URL}
+      NOTIFICATIONS_MS_URL: http://notifications-service:9020
+
+
+
+  notifications-service:
+    build: ./notification
+    ports:
+      - "9020:9020"
+    env_file:
+      - ./notification/.env
+    environment:
+      PORT: 9020
+      DB_URL: ${DB_URL}
+      MAIL_PASSWORD: kzathonhnlidmals
+      MAIL_USER: clean.wheels.project@gmail.com
+      RABBITMQ_HOST: rabbitmq2
+      RABBITMQ_PORT: 5672
+      RABBITMQ_USERNAME: cleanwheels
+      RABBITMQ_PASSWORD: 2020
+    depends_on:
+      booking-service:
+        condition: service_started
+      rabbitmq:
+        condition: service_started
+  
+
+  rabbitmq:
+    image: rabbitmq:management
+    container_name: rabbitmq2
+    restart: always
+    environment:
+      RABBITMQ_DEFAULT_USER: cleanwheels
+      RABBITMQ_DEFAULT_PASS: 2020
+    ports:
+      - "5672:5672"
+      - "15672:15672"
