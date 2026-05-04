@@ -48,6 +48,6 @@ RUN chown -R nodeuser:nodejs /app
 
 USER nodeuser
 
-EXPOSE 9010
+EXPOSE 9000
 
 CMD ["node", "dist/bin/www.js"]
