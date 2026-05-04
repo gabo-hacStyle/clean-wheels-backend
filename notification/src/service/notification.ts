@@ -132,6 +132,7 @@ class NotificationService {
     html: string
   ): Promise<Notification> {
     // Registrar notificación en BD antes de intentar el envío
+    console.log("llEgando a sendAndRecord con ");
     const notification = await this.repository.createNotification({
       user_id: detail.user_id,
       vehicle_id: detail.vehicle_id,

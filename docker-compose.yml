@@ -1,5 +1,18 @@
 services:
 
+  postgres:
+    image: postgres:14
+    container_name: postgres
+    restart: always
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+      POSTGRES_DB: cleanwheels
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
   api_gateway:
     build: ./api-gateway
     ports:
@@ -76,12 +89,9 @@ services:
     environment:
       PORT: 9020
       DB_URL: ${DB_URL}
-      MAIL_PASSWORD: kzathonhnlidmals
+      MAIL_PASSWORD: ${MAIL_PASSWORD}
       MAIL_USER: clean.wheels.project@gmail.com
-      RABBITMQ_HOST: rabbitmq2
-      RABBITMQ_PORT: 5672
-      RABBITMQ_USERNAME: cleanwheels
-      RABBITMQ_PASSWORD: 2020
+      RABBITMQ_URL: ${RABBITMQ_URL}
     depends_on:
       booking-service:
         condition: service_started
@@ -99,3 +109,6 @@ services:
     ports:
       - "5672:5672"
       - "15672:15672"
+
+volumes:
+  postgres_data:
