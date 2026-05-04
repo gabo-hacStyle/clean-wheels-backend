@@ -1,4 +1,18 @@
 services:
+
+  postgres:
+    image: postgres:14
+    container_name: postgres
+    restart: always
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+      POSTGRES_DB: cleanwheels
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
   api_gateway:
     build: ./api-gateway
     ports:
@@ -95,3 +109,6 @@ services:
     ports:
       - "5672:5672"
       - "15672:15672"
+
+volumes:
+  postgres_data:
