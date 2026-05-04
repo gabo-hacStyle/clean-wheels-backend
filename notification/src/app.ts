@@ -4,8 +4,8 @@ import morgan from "morgan";
 import dotenv from "dotenv";
 import NotificationController from "./controllers/notification";
 import NotificationScheduler from "./scheduler/notification.scheduler";
-import RabbitMQClient from "./infrastructure/rabbitmq.client";
-import Mailer from "./infrastructure/mailer";
+import RabbitMQClient from "./infraestructure/rabbitmq.client";
+import Mailer from "./infraestructure/mailer";
 
 dotenv.config();
 

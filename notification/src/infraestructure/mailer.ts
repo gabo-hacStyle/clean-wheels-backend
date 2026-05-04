@@ -5,16 +5,17 @@ class Mailer {
   private static instance: Mailer;
   private transporter: Transporter;
 
+  
   private constructor() {
-    // Nodemailer con OAuth2 para Gmail
+    // Nodemailer con contraseña de aplicación para Gmail
     this.transporter = nodemailer.createTransport({
       service: "gmail",
       auth: {
-        type: "OAuth2",
-        user: process.env.GMAIL_USER,
-        clientId: process.env.GMAIL_CLIENT_ID,
-        clientSecret: process.env.GMAIL_CLIENT_SECRET,
-        refreshToken: process.env.GMAIL_REFRESH_TOKEN,
+        user: String(process.env.MAIL_USER),
+        pass: String(process.env.MAIL_PASSWORD),
+      },
+      tls: {
+        rejectUnauthorized: false,
       },
     });
   }
@@ -29,7 +30,7 @@ class Mailer {
   public async send(payload: EmailPayload): Promise<void> {
     try {
       const options: SendMailOptions = {
-        from: `"Lavadero" <${process.env.GMAIL_USER}>`,
+        from: `"Lavadero" <${process.env.MAIL_USER}>`,
         to: payload.to,
         subject: payload.subject,
         html: payload.html,

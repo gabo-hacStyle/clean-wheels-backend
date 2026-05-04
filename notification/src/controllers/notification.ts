@@ -35,6 +35,7 @@ class NotificationController {
   ): Promise<void> {
     try {
       const body = req.body as TriggerNotificationBody;
+      console.log("Hola")
 
       if (!body.reservation_id || !body.type) {
         const response: ApiResponse<null> = {
@@ -102,9 +103,15 @@ class NotificationController {
         err.message.includes("no encontrada") ||
         err.message.includes("no existe");
 
+      if (!isBusinessError) {
+        console.error("Error 500 en triggerNotification:", err.message);
+      }
+
       const response: ApiResponse<null> = {
         success: false,
-        error: err.message,
+        error: isBusinessError
+          ? err.message
+          : "Ocurrió un error interno al procesar la notificación.",
       };
 
       res.status(isBusinessError ? 422 : 500).json(response);
