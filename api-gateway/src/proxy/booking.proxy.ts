@@ -1,10 +1,9 @@
 import { createProxyMiddleware, fixRequestBody } from 'http-proxy-middleware';
 import type { Request, Response } from 'express';
-import { env } from '@config/env';
 import logger from '@utils/logger';
 
 export const bookingProxy = createProxyMiddleware<Request>({
-  target: env.BOOKING_SERVICE_URL,
+  target: process.env.BOOKING_SERVICE_URL,
   changeOrigin: true,
   pathRewrite: { '^/api/booking': '' },
   on: {

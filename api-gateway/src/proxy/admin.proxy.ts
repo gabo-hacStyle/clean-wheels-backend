@@ -1,10 +1,9 @@
 import { createProxyMiddleware, fixRequestBody } from 'http-proxy-middleware';
 import type { Request, Response } from 'express';
-import { env } from '@config/env';
 import logger from '@utils/logger';
 
 export const adminProxy = createProxyMiddleware<Request>({
-  target: env.ADMIN_SERVICE_URL,
+  target: process.env.ADMIN_SERVICE_URL,
   changeOrigin: true,
   pathRewrite: { '^/api/admin': '' },
   on: {

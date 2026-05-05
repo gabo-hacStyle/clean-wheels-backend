@@ -1,6 +1,5 @@
 import type { Request, Response, NextFunction } from 'express';
 import jwt from 'jsonwebtoken';
-import { env } from '@config/env';
 import type { JwtPayload } from '../types';
 
 export const authenticate = (req: Request, res: Response, next: NextFunction): void => {
@@ -13,7 +12,7 @@ export const authenticate = (req: Request, res: Response, next: NextFunction): v
 
   try {
     const token = authHeader?.split(' ')[1];
-    const decoded = jwt.verify(token, env.JWT_SECRET);
+    const decoded = jwt.verify(token, (process.env.JWT_SECRET || ''));
 
     if (typeof decoded === 'string') {
       res.status(401).json({ error: 'Token inválido' });
