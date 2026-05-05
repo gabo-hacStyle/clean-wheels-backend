@@ -1,10 +1,9 @@
 import app from './app';
-import { env } from '@config/env';
 import logger from './utils/logger';
 
 async function bootstrap(): Promise<void> {
-  const server = app.listen(env.PORT, () => {
-    logger.info(`Auth Service corriendo en el puerto ${env.PORT} en modo ${env.NODE_ENV}`);
+  const server = app.listen(process.env.PORT, () => {
+    logger.info(`Auth Service corriendo en el puerto ${process.env.PORT} en modo ${process.env.NODE_ENV}`);
   });
 
   const shutdown = (): void => {

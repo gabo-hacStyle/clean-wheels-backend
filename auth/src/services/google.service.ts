@@ -1,5 +1,4 @@
 import { OAuth2Client } from 'google-auth-library';
-import { env } from '@config/env';
 import type { GoogleUserInfo } from '../types';
 import logger from '@utils/logger';
 
@@ -8,9 +7,9 @@ class GoogleService {
 
   constructor() {
     this.client = new OAuth2Client(
-      env.GOOGLE_CLIENT_ID,
-      env.GOOGLE_CLIENT_SECRET,
-      env.GOOGLE_REDIRECT_URI,
+      process.env.GOOGLE_CLIENT_ID,
+      process.env.GOOGLE_CLIENT_SECRET,
+      process.env.GOOGLE_REDIRECT_URI,
     );
   }
 
@@ -36,10 +35,10 @@ class GoogleService {
         throw new Error('No se recibió id_token de Google');
       }
 
-      const verifier = new OAuth2Client(env.GOOGLE_CLIENT_ID);
+      const verifier = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
       const ticket = await verifier.verifyIdToken({
         idToken: tokens.id_token,
-        audience: env.GOOGLE_CLIENT_ID,
+        audience: process.env.GOOGLE_CLIENT_ID,
       });
 
       const payload = ticket.getPayload()!;
