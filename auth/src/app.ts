@@ -2,7 +2,6 @@ import express from 'express';
 import helmet from 'helmet';
 import cors from 'cors';
 import morgan from 'morgan';
-import { env } from '@config/env';
 import logger from '@utils/logger';
 import authRoutes from './routes/auth.route';
 
@@ -12,7 +11,7 @@ app.use(helmet());
 
 app.use(
   cors({
-    origin: env.ALLOWED_ORIGINS.split(','),
+    origin: (process.env.ALLOWED_ORIGINS || '*').split(','),
     credentials: true,
   }),
 );

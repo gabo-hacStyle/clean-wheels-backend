@@ -5,7 +5,6 @@ import type { StreamOptions } from 'morgan';
 import morgan from 'morgan';
 import rateLimit from 'express-rate-limit';
 
-import { env } from '@config/env';
 import logger from '@utils/logger';
 
 import authRoute from '@routes/auth.route';
@@ -18,7 +17,7 @@ app.use(helmet());
 
 app.use(
   cors({
-    origin: env.ALLOWED_ORIGINS.split(','),
+    origin: (process.env.ALLOWED_ORIGINS || '*').split(',') || '*',
     credentials: true,
   }),
 );

@@ -1,11 +1,10 @@
 import { userRepository } from '../repositories/user.repository';
 import { googleService } from './google.service';
 import { jwtUtil } from '@utils/jwt';
-import { env } from '@config/env';
 import type { LoginResult, UserRole } from '../types';
 import logger from '@utils/logger';
 
-const ADMIN_EMAILS: string[] = env.ADMIN_EMAILS?.split(',').map((e) => e.trim()) ?? [];
+const ADMIN_EMAILS: string[] = process.env.ADMIN_EMAILS?.split(',').map((e) => e.trim()) ?? [];
 
 class AuthService {
   getGoogleAuthUrl(): string {
