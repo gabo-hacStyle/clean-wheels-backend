@@ -1,9 +1,8 @@
 import { Pool } from 'pg';
-import { env } from '@config/env';
 import logger from '@utils/logger';
 
 export const pool = new Pool({
-  connectionString: env.DB_URL,
+  connectionString: process.env.DB_URL,
   max: 10,
   idleTimeoutMillis: 30_000,
   connectionTimeoutMillis: 2_000,
