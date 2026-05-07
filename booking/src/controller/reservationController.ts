@@ -50,10 +50,10 @@ class ReservationController {
     try {
       const body = req.body as CheckAvailabilityBody;
 
-      if (!body.datetime || body.total_duration === undefined) {
+      if (!body.date || !body.time || body.total_duration === undefined) {
         const response: ApiResponse<null> = {
           success: false,
-          error: "Los campos datetime y total_duration son requeridos.",
+          error: "Los campos date, time y total_duration son requeridos.",
         };
         res.status(400).json(response);
         return;
@@ -91,11 +91,11 @@ class ReservationController {
     try {
       const body = req.body as CreateReservationBody;
 
-      if (!body.vehicle_id || !body.datetime || !body.service_ids) {
+      if (!body.vehicle_id || !body.date || !body.time || !body.service_ids) {
         const response: ApiResponse<null> = {
           success: false,
           error:
-            "Los campos vehicle_id, datetime y service_ids son requeridos.",
+            "Los campos vehicle_id, date, time y service_ids son requeridos.",
         };
         res.status(400).json(response);
         return;
