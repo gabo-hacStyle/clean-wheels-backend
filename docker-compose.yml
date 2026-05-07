@@ -3,8 +3,7 @@ services:
     build: ./api-gateway
     ports:
       - "8080:8080"
-    env_file:
-      - ./api-gateway/.env
+    
     environment:
       PORT: 8080
       NODE_ENV: development
@@ -13,7 +12,7 @@ services:
       ADMIN_SERVICE_URL: http://admin-service:9000
       BOOKING_SERVICE_URL: http://booking-service:9010
       NOTIFICATIONS_SERVICE_URL: http://notifications-service:9020
-      ALLOWED_ORIGINS: http://localhost:3000
+      ALLOWED_ORIGINS: http://localhost:5173
     depends_on:
       - auth-service
       - admin-service
@@ -24,18 +23,16 @@ services:
     build: ./auth
     ports:
       - "8090:8090"
-    env_file:
-      - ./auth/.env
     environment:
       DB_URL: ${DB_URL}
       PORT: 8090
       NODE_ENV: development
-      ALLOWED_ORIGINS: http://localhost:8080
+      ALLOWED_ORIGINS: http://localhost:5173
       JWT_SECRET: ${JWT_SECRET}
       JWT_EXPIRES_IN: 7d
       GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID}
       GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET}
-      GOOGLE_REDIRECT_URI: http://localhost:8080/google/callback
+      GOOGLE_REDIRECT_URI: http://localhost:5173/google/callback
       ADMIN_EMAILS: clean.wheels.project@gmail.com
 
 
@@ -44,8 +41,6 @@ services:
     build: ./admin
     ports:
       - "9000:9000"
-    env_file:
-      - ./admin/.env
     environment:
       PORT: 9010
       DB_URL: ${DB_URL}
@@ -57,8 +52,6 @@ services:
     build: ./booking
     ports:
       - "9010:9010"
-    env_file:
-      - ./booking/.env
     environment:
       PORT: 9000
       DB_URL: ${DB_URL}
@@ -70,8 +63,6 @@ services:
     build: ./notification
     ports:
       - "9020:9020"
-    env_file:
-      - ./notification/.env
     environment:
       PORT: 9020
       DB_URL: ${DB_URL}
@@ -95,3 +86,20 @@ services:
     ports:
       - "5672:5672"
       - "15672:15672"
+
+  postgres:
+    image: postgres:14
+    container_name: postgres
+    restart: always
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+      POSTGRES_DB: cleanwheels
+    ports:
+      - "5433:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+
+volumes:
+  postgres_data:
