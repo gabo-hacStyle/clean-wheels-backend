@@ -196,7 +196,7 @@ class ReservationService {
     const schedule: HourlySchedule[] = [];
 
     // Construir un bloque por cada hora de la ventana
-    for (let i = 0; i < 8; i++) {
+    for (let i = 0; i < 4; i++) {
       const hourStart = new Date(from.getTime() + i * 60 * 60 * 1000);
       const hourEnd = new Date(hourStart.getTime() + 60 * 60 * 1000);
 
