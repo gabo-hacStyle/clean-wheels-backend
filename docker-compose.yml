@@ -42,7 +42,7 @@ services:
     ports:
       - "9000:9000"
     environment:
-      PORT: 9010
+      PORT: 9000
       DB_URL: ${DB_URL}
     depends_on:
       - postgres
@@ -53,7 +53,7 @@ services:
     ports:
       - "9010:9010"
     environment:
-      PORT: 9000
+      PORT: 9010
       DB_URL: ${DB_URL}
       NOTIFICATIONS_MS_URL: http://notifications-service:9020
 
