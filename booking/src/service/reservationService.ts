@@ -23,6 +23,9 @@ import {
   WeeklyCalendarQuery,
 } from "../types";
 
+// Agregar al inicio de reservation.service.ts
+import { parseColombiaDT, assertNotPast, formatColombia } from "../utils/date.utils";
+
 
 class ReservationService {
   private repository: ReservationRepository;
@@ -33,150 +36,134 @@ class ReservationService {
     this.notificationClient = NotificationClient.getInstance();
   }
 
-  async checkAvailability(
-    body: CheckAvailabilityBody
-  ): Promise<AvailabilityResult> {
-    try {
-      const { datetime, total_duration } = body;
+async checkAvailability(
+  body: CheckAvailabilityBody
+): Promise<AvailabilityResult> {
+  try {
+    const { date, time, total_duration } = body;
 
-      if (!datetime || total_duration === undefined || total_duration === null) {
-        throw new Error(
-          "Los campos datetime y total_duration son requeridos."
-        );
-      }
+    if (!date || !time) {
+      throw new Error("Los campos date y time son requeridos.");
+    }
 
-      if (total_duration <= 0) {
-        throw new Error(
-          "La duración total debe ser mayor a 0 minutos."
-        );
-      }
+    if (total_duration === undefined || total_duration === null) {
+      throw new Error("El campo total_duration es requerido.");
+    }
 
-      const start = new Date(datetime);
-      if (isNaN(start.getTime())) {
-        throw new Error(
-          `El formato de fecha y hora es inválido. Use ISO 8601 (ej: "2025-06-15T10:00:00Z").`
-        );
-      }
+    if (total_duration <= 0) {
+      throw new Error("La duración total debe ser mayor a 0 minutos.");
+    }
 
-      if (start < new Date()) {
-        throw new Error(
-          "No es posible verificar disponibilidad para fechas pasadas."
-        );
-      }
+    // Normalizar a UTC
+    const start = parseColombiaDT(date, time);
 
-      // Calcular el fin del slot solicitado
-      const end = new Date(start.getTime() + total_duration * 60 * 1000);
+    // Validar que no sea en el pasado
+    assertNotPast(start, `El horario "${date} ${time}" (hora Colombia)`);
 
-      const maxSlots = this.repository.getMaxConcurrentReservations();
+    const end = new Date(start.getTime() + total_duration * 60 * 1000);
+    const maxSlots = this.repository.getMaxConcurrentReservations();
+    const overlapping = await this.repository.countOverlappingReservations(
+      start,
+      end
+    );
 
-      // Contar cuántas reservas activas se solapan con el slot completo
-      const overlapping = await this.repository.countOverlappingReservations(
-        start,
-        end
-      );
+    const slotsRemaining = maxSlots - overlapping;
+    const available = slotsRemaining > 0;
 
-      const slotsRemaining = maxSlots - overlapping;
-      const available = slotsRemaining > 0;
+    return {
+      available,
+      datetime: start.toISOString(),
+      end_datetime: end.toISOString(),
+      total_duration,
+      concurrent_reservations: overlapping,
+      slots_remaining: slotsRemaining,
+      message: available
+        ? `Hay disponibilidad para el ${date} a las ${time} (hora Colombia). Quedan ${slotsRemaining} cupo(s) de ${maxSlots}.`
+        : `No hay disponibilidad para el ${date} a las ${time} (hora Colombia). Los ${maxSlots} cupos están ocupados durante ese período.`,
+    };
+  } catch (error) {
+    const err = error as Error;
+    throw new Error(
+      `[ReservationService] Error al verificar disponibilidad: ${err.message}`
+    );
+  }
+}
 
-      return {
-        available,
-        datetime: start.toISOString(),
-        end_datetime: end.toISOString(),
-        total_duration,
-        concurrent_reservations: overlapping,
-        slots_remaining: slotsRemaining,
-        message: available
-          ? `Hay disponibilidad para el slot solicitado. Quedan ${slotsRemaining} cupo(s) de ${maxSlots}.`
-          : `No hay disponibilidad para el horario solicitado. Los ${maxSlots} cupos están ocupados durante ese período.`,
-      };
-    } catch (error) {
-      const err = error as Error;
+async createReservation(
+  body: CreateReservationBody
+): Promise<ReservationWithServices> {
+  try {
+    const { vehicle_id, date, time, service_ids } = body;
+
+    if (!date || !time) {
+      throw new Error("Los campos date y time son requeridos.");
+    }
+
+    if (!service_ids || service_ids.length === 0) {
+      throw new Error("Debe seleccionar al menos un servicio.");
+    }
+
+    const vehicleExists = await this.repository.findVehicleById(vehicle_id);
+    if (!vehicleExists) {
       throw new Error(
-        `[ReservationService] Error al verificar disponibilidad: ${err.message}`
+        `El vehículo con id "${vehicle_id}" no existe en el sistema.`
       );
     }
-  }
 
-  async createReservation(
-    body: CreateReservationBody
-  ): Promise<ReservationWithServices> {
-    try {
-      const { vehicle_id, datetime, service_ids } = body;
+    const foundServices: WashService[] =
+      await this.repository.findServicesByIds(service_ids);
 
-      if (!service_ids || service_ids.length === 0) {
-        throw new Error("Debe seleccionar al menos un servicio.");
-      }
-
-      const vehicleExists = await this.repository.findVehicleById(vehicle_id);
-      if (!vehicleExists) {
-        throw new Error(
-          `El vehículo con id "${vehicle_id}" no existe en el sistema.`
-        );
-      }
-
-      const foundServices: WashService[] =
-        await this.repository.findServicesByIds(service_ids);
-
-      if (foundServices.length !== service_ids.length) {
-        const foundIds = foundServices.map((s) => s.id);
-        const invalidIds = service_ids.filter((id) => !foundIds.includes(id));
-        throw new Error(
-          `Los siguientes servicios no existen o no están disponibles: ${invalidIds.join(", ")}`
-        );
-      }
-
-      const start = new Date(datetime);
-      if (isNaN(start.getTime())) {
-        throw new Error(
-          `El formato de fecha y hora es inválido. Use ISO 8601 (ej: "2025-06-15T10:00:00Z").`
-        );
-      }
-
-      if (start < new Date()) {
-        throw new Error(
-          "No es posible agendar una reserva en una fecha pasada."
-        );
-      }
-
-      // Calcular duración total real desde los servicios seleccionados
-      const totalDuration = foundServices.reduce(
-        (sum, s) => sum + Number(s.duration),
-        0
-      );
-      const end = new Date(start.getTime() + totalDuration * 60 * 1000);
-
-      // Verificar disponibilidad con la misma regla de los 3 empleados
-      const maxSlots = this.repository.getMaxConcurrentReservations();
-      const overlapping = await this.repository.countOverlappingReservations(
-        start,
-        end
-      );
-
-      if (overlapping >= maxSlots) {
-        throw new Error(
-          `El horario solicitado no está disponible. Los ${maxSlots} cupos están ocupados durante ese período.`
-        );
-      }
-
-      const reservation = await this.repository.createReservationWithServices(
-        vehicle_id,
-        start,
-        foundServices
-      );
-
-      await this.notificationClient.trigger(
-        reservation.id,
-        NotificationType.RESERVA_CREADA
-      );
-
-      return reservation;
-    } catch (error) {
-      const err = error as Error;
+    if (foundServices.length !== service_ids.length) {
+      const foundIds = foundServices.map((s) => s.id);
+      const invalidIds = service_ids.filter((id) => !foundIds.includes(id));
       throw new Error(
-        `[ReservationService] Error al crear la reserva: ${err.message}`
+        `Los siguientes servicios no existen o no están disponibles: ${invalidIds.join(", ")}`
       );
     }
+
+    // Normalizar hora Colombia → UTC
+    const start = parseColombiaDT(date, time);
+
+    // Validar que no sea en el pasado
+    assertNotPast(start, `El horario "${date} ${time}" (hora Colombia)`);
+
+    const totalDuration = foundServices.reduce(
+      (sum, s) => sum + Number(s.duration),
+      0
+    );
+    const end = new Date(start.getTime() + totalDuration * 60 * 1000);
+
+    const maxSlots = this.repository.getMaxConcurrentReservations();
+    const overlapping = await this.repository.countOverlappingReservations(
+      start,
+      end
+    );
+
+    if (overlapping >= maxSlots) {
+      throw new Error(
+        `El horario del ${date} a las ${time} (hora Colombia) no está disponible. Los ${maxSlots} cupos están ocupados durante ese período.`
+      );
+    }
+
+    const reservation = await this.repository.createReservationWithServices(
+      vehicle_id,
+      start,  // se guarda en UTC en PostgreSQL
+      foundServices
+    );
+
+    await this.notificationClient.trigger(
+      reservation.id,
+      NotificationType.RESERVA_CREADA
+    );
+
+    return reservation;
+  } catch (error) {
+    const err = error as Error;
+    throw new Error(
+      `[ReservationService] Error al crear la reserva: ${err.message}`
+    );
   }
+}
 
   async getUpcomingSchedule(): Promise<HourlySchedule[]> {
   try {
@@ -225,16 +212,9 @@ class ReservationService {
               marca: null,
               modelo: null,
               services: null,
-              start_time: null,
-              end_time: null,
               status: null,
             };
           }
-
-          const resStart = new Date(reservation.datetime);
-          const resEnd = new Date(
-            resStart.getTime() + Number(reservation.total_duration) * 60 * 1000
-          );
 
           return {
             slot_index: idx + 1,
@@ -246,15 +226,12 @@ class ReservationService {
             services: reservation.services.map((s: any) =>
               typeof s === "string" ? s : s.name
             ),
-            start_time: resStart.toISOString(),
-            end_time: resEnd.toISOString(),
             status: reservation.status,
           };
         }
       );
 
       schedule.push({
-        hour: hourStart.toISOString(),
         hour_label: hourStart.toLocaleTimeString("es-CO", {
           hour: "2-digit",
           minute: "2-digit",
@@ -334,108 +311,117 @@ class ReservationService {
     }
   }
 
-  async updateReservation(
-    reservationId: string,
-    body: UpdateReservationBody,
-    user: GatewayUser
-  ): Promise<ReservationWithServices> {
-    try {
-      if (!body.datetime && !body.service_ids) {
-        throw new Error(
-          "Debe enviar al menos un campo a modificar: datetime o service_ids."
-        );
-      }
+async updateReservation(
+  reservationId: string,
+  body: UpdateReservationBody,
+  user: GatewayUser
+): Promise<ReservationWithServices> {
+  try {
+    const hasDateChange = Boolean(body.date || body.time);
+    const hasServiceChange = body.service_ids && body.service_ids.length > 0;
 
-      const reservation = await this.repository.findReservationById(reservationId);
-
-      if (!reservation) {
-        throw new Error(
-          `La reserva con id "${reservationId}" no existe.`
-        );
-      }
-
-      const nonEditableStatuses: ReservationStatus[] = [
-        ReservationStatus.CANCELADA,
-        ReservationStatus.FINALIZADA,
-        ReservationStatus.EN_PROCESO,
-      ];
-
-      if (nonEditableStatuses.includes(reservation.status)) {
-        throw new Error(
-          `La reserva no puede modificarse porque su estado actual es "${reservation.status}".`
-        );
-      }
-
-      await this.assertUserCanModify(user, reservation);
-
-      // Si no se envía nuevo datetime, conservar el actual
-      const newDatetime = body.datetime
-        ? new Date(body.datetime)
-        : new Date(reservation.datetime);
-
-      if (body.datetime && isNaN(newDatetime.getTime())) {
-        throw new Error(
-          `El formato de fecha y hora es inválido. Use ISO 8601 (ej: "2025-06-15T10:00:00Z").`
-        );
-      }
-
-      if (newDatetime < new Date()) {
-        throw new Error(
-          "No es posible reprogramar una reserva en una fecha pasada."
-        );
-      }
-
-      // Si no se envían nuevos servicios, conservar los actuales
-      let services: WashService[];
-
-      if (body.service_ids && body.service_ids.length > 0) {
-        services = await this.repository.findServicesByIds(body.service_ids);
-
-        if (services.length !== body.service_ids.length) {
-          const foundIds = services.map((s) => s.id);
-          const invalidIds = body.service_ids.filter(
-            (id) => !foundIds.includes(id)
-          );
-          throw new Error(
-            `Los siguientes servicios no existen o no están disponibles: ${invalidIds.join(", ")}`
-          );
-        }
-      } else {
-        services = reservation.services;
-      }
-
-      // Verificar disponibilidad del nuevo slot (excluyendo la reserva actual)
-      const totalDuration = services.reduce(
-        (sum, s) => sum + Number(s.duration),
-        0
-      );
-      const end = new Date(newDatetime.getTime() + totalDuration * 60 * 1000);
-
-      const maxSlots = this.repository.getMaxConcurrentReservations();
-      const overlapping = await this.repository.countOverlappingReservations(
-        newDatetime,
-        end,
-        reservationId
-      );
-
-      if (overlapping >= maxSlots) {
-        throw new Error(
-          `El nuevo horario no está disponible. Los ${maxSlots} cupos están ocupados durante ese período.`
-        );
-      }
-
-      return await this.repository.updateReservation(
-        reservationId,
-        newDatetime,
-        services
-      );
-    } catch (error) {
-      const err = error as Error;
+    if (!hasDateChange && !hasServiceChange) {
       throw new Error(
-        `[ReservationService] Error al modificar la reserva: ${err.message}`
+        "Debe enviar al menos un campo a modificar: date/time o service_ids."
       );
     }
+
+    // Si solo llega uno de los dos (date sin time o time sin date) es ambiguo
+    if ((body.date && !body.time) || (!body.date && body.time)) {
+      throw new Error(
+        "Para cambiar el horario debe enviar tanto date (YYYY-MM-DD) como time (HH:mm)."
+      );
+    }
+
+    const reservation =
+      await this.repository.findReservationById(reservationId);
+
+    if (!reservation) {
+      throw new Error(`La reserva con id "${reservationId}" no existe.`);
+    }
+
+    const nonEditableStatuses: ReservationStatus[] = [
+      ReservationStatus.CANCELADA,
+      ReservationStatus.FINALIZADA,
+      ReservationStatus.EN_PROCESO,
+    ];
+
+    if (nonEditableStatuses.includes(reservation.status)) {
+      throw new Error(
+        `La reserva no puede modificarse porque su estado actual es "${reservation.status}".`
+      );
+    }
+
+    await this.assertUserCanModify(user, reservation);
+
+    // Calcular el nuevo datetime: si viene date+time, normalizar; si no, conservar el actual
+    let newDatetime: Date;
+
+    if (body.date && body.time) {
+      newDatetime = parseColombiaDT(body.date, body.time);
+      assertNotPast(
+        newDatetime,
+        `El nuevo horario "${body.date} ${body.time}" (hora Colombia)`
+      );
+    } else {
+      // Conservar el datetime actual guardado en BD (ya está en UTC)
+      newDatetime = new Date(reservation.datetime);
+    }
+
+    // Resolver servicios: nuevos o los actuales
+    let services: WashService[];
+
+    if (body.service_ids && body.service_ids.length > 0) {
+      services = await this.repository.findServicesByIds(body.service_ids);
+
+      if (services.length !== body.service_ids.length) {
+        const foundIds = services.map((s) => s.id);
+        const invalidIds = body.service_ids.filter(
+          (id) => !foundIds.includes(id)
+        );
+        throw new Error(
+          `Los siguientes servicios no existen o no están disponibles: ${invalidIds.join(", ")}`
+        );
+      }
+    } else {
+      services = reservation.services;
+    }
+
+    const totalDuration = services.reduce(
+      (sum, s) => sum + Number(s.duration),
+      0
+    );
+    const end = new Date(newDatetime.getTime() + totalDuration * 60 * 1000);
+
+    const maxSlots = this.repository.getMaxConcurrentReservations();
+    const overlapping = await this.repository.countOverlappingReservations(
+      newDatetime,
+      end,
+      reservationId
+    );
+
+    if (overlapping >= maxSlots) {
+      const label = body.date && body.time
+        ? `${body.date} a las ${body.time} (hora Colombia)`
+        : formatColombia(newDatetime);
+
+      throw new Error(
+        `El horario del ${label} no está disponible. Los ${maxSlots} cupos están ocupados durante ese período.`
+      );
+    }
+
+    return await this.repository.updateReservation(
+      reservationId,
+      newDatetime,
+      services
+    );
+  } catch (error) {
+    const err = error as Error;
+    throw new Error(
+      `[ReservationService] Error al modificar la reserva: ${err.message}`
+    );
   }
+}
 
   async completeReservation(
   reservationId: string,
@@ -510,95 +496,95 @@ class ReservationService {
   }
 }
 
-async getActiveReservationsByUser(
-  userId: string
-): Promise<ReservationWithServices[]> {
-  try {
-    if (!userId || userId.trim() === "") {
-      throw new Error("El user_id es requerido.");
-    }
+  async getActiveReservationsByUser(
+    userId: string
+  ): Promise<ReservationWithServices[]> {
+    try {
+      if (!userId || userId.trim() === "") {
+        throw new Error("El user_id es requerido.");
+      }
 
-    return await this.repository.findActiveReservationsByUserId(userId);
-  } catch (error) {
-    const err = error as Error;
-    throw new Error(
-      `[ReservationService] Error al obtener reservas activas del usuario: ${err.message}`
-    );
-  }
-}
-
-async getWeeklyCalendar(query: WeeklyCalendarQuery): Promise<WeeklyCalendar> {
-  try {
-    if (!query.week_start) {
-      throw new Error("El parámetro week_start es requerido (formato: YYYY-MM-DD).");
-    }
-
-    // week_start debe ser lunes — se acepta cualquier día y se normaliza
-    const startDate = new Date(`${query.week_start}T08:00:00`);
-    if (isNaN(startDate.getTime())) {
+      return await this.repository.findActiveReservationsByUserId(userId);
+    } catch (error) {
+      const err = error as Error;
       throw new Error(
-        `Formato de fecha inválido para week_start: "${query.week_start}". Use YYYY-MM-DD.`
+        `[ReservationService] Error al obtener reservas activas del usuario: ${err.message}`
       );
     }
-
-    // Fin: domingo a las 18:00 (7 días, hasta las 18 inclusive)
-    const endDate = new Date(startDate);
-    endDate.setDate(endDate.getDate() + 7);
-
-    const occupancy = await this.repository.findSlotOccupancyByWeek(
-      startDate,
-      endDate
-    );
-
-    const maxSlots = this.repository.getMaxConcurrentReservations();
-
-    // Agrupar por día
-    const dayMap = new Map<string, CalendarSlot[]>();
-
-    for (const slot of occupancy) {
-      const localDate = new Date(slot.slot_start);
-
-      const dateKey = localDate.toLocaleDateString("en-CA", {
-        timeZone: "America/Bogota",
-      }); // "2025-06-15"
-
-      const hourLabel = localDate.toLocaleTimeString("es-CO", {
-        timeZone: "America/Bogota",
-        hour: "2-digit",
-        minute: "2-digit",
-        hour12: false,
-      }); // "08:00"
-
-      if (!dayMap.has(dateKey)) dayMap.set(dateKey, []);
-
-      dayMap.get(dateKey)!.push({
-        hour: hourLabel,
-        full: slot.count >= maxSlots,
-      });
-    }
-
-    // Construir la respuesta ordenada por día
-    const days: CalendarDay[] = Array.from(dayMap.entries())
-      .sort(([a], [b]) => a.localeCompare(b))
-      .map(([date, slots]) => ({ date, slots }));
-
-    const weekEndDate = new Date(endDate);
-    weekEndDate.setDate(weekEndDate.getDate() - 1);
-
-    return {
-      week_start: query.week_start,
-      week_end: weekEndDate.toLocaleDateString("en-CA", {
-        timeZone: "America/Bogota",
-      }),
-      days,
-    };
-  } catch (error) {
-    const err = error as Error;
-    throw new Error(
-      `[ReservationService] Error generando calendario semanal: ${err.message}`
-    );
   }
-}
+
+  async getWeeklyCalendar(query: WeeklyCalendarQuery): Promise<WeeklyCalendar> {
+    try {
+      if (!query.week_start) {
+        throw new Error("El parámetro week_start es requerido (formato: YYYY-MM-DD).");
+      }
+
+      // week_start debe ser lunes — se acepta cualquier día y se normaliza
+      const startDate = new Date(`${query.week_start}T08:00:00`);
+      if (isNaN(startDate.getTime())) {
+        throw new Error(
+          `Formato de fecha inválido para week_start: "${query.week_start}". Use YYYY-MM-DD.`
+        );
+      }
+
+      // Fin: domingo a las 18:00 (7 días, hasta las 18 inclusive)
+      const endDate = new Date(startDate);
+      endDate.setDate(endDate.getDate() + 7);
+
+      const occupancy = await this.repository.findSlotOccupancyByWeek(
+        startDate,
+        endDate
+      );
+
+      const maxSlots = this.repository.getMaxConcurrentReservations();
+
+      // Agrupar por día
+      const dayMap = new Map<string, CalendarSlot[]>();
+
+      for (const slot of occupancy) {
+        const localDate = new Date(slot.slot_start);
+
+        const dateKey = localDate.toLocaleDateString("en-CA", {
+          timeZone: "America/Bogota",
+        }); // "2025-06-15"
+
+        const hourLabel = localDate.toLocaleTimeString("es-CO", {
+          timeZone: "America/Bogota",
+          hour: "2-digit",
+          minute: "2-digit",
+          hour12: false,
+        }); // "08:00"
+
+        if (!dayMap.has(dateKey)) dayMap.set(dateKey, []);
+
+        dayMap.get(dateKey)!.push({
+          hour: hourLabel,
+          full: slot.count >= maxSlots,
+        });
+      }
+
+      // Construir la respuesta ordenada por día
+      const days: CalendarDay[] = Array.from(dayMap.entries())
+        .sort(([a], [b]) => a.localeCompare(b))
+        .map(([date, slots]) => ({ date, slots }));
+
+      const weekEndDate = new Date(endDate);
+      weekEndDate.setDate(weekEndDate.getDate() - 1);
+
+      return {
+        week_start: query.week_start,
+        week_end: weekEndDate.toLocaleDateString("en-CA", {
+          timeZone: "America/Bogota",
+        }),
+        days,
+      };
+    } catch (error) {
+      const err = error as Error;
+      throw new Error(
+        `[ReservationService] Error generando calendario semanal: ${err.message}`
+      );
+    }
+  }
 }
 
 export default ReservationService;

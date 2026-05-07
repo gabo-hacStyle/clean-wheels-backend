@@ -68,15 +68,14 @@ export interface ReservationWithServices extends Reservation {
   services: WashService[];
 }
 
-// ─── Request Bodies ───────────────────────────────────────────────────────────
 
 export interface CreateReservationBody {
-  vehicle_id: string;       // UUID del vehículo (ya registrado en el sistema)
-  datetime: string;         // ISO 8601: "2025-06-15T10:00:00Z"
-  service_ids: string[];    // UUIDs de los servicios seleccionados
+  vehicle_id: string;
+  date: string;           // "2025-06-15" (YYYY-MM-DD)
+  time: string;           // "13:00" (HH:mm, hora Colombia)
+  service_ids: string[];
 }
 
-// ─── API Responses ────────────────────────────────────────────────────────────
 
 export interface ApiResponse<T> {
   success: boolean;
@@ -87,8 +86,9 @@ export interface ApiResponse<T> {
 // Agregar junto a los otros Request Bodies
 
 export interface CheckAvailabilityBody {
-  datetime: string;       // ISO 8601: "2025-06-15T10:00:00Z"
-  total_duration: number; // Duración total en minutos de los servicios seleccionados
+  date: string;           // "2025-06-15" (YYYY-MM-DD)
+  time: string;           // "13:00" o "15:30" (HH:mm, hora Colombia)
+  total_duration: number; // minutos
 }
 
 export interface AvailabilityResult {
@@ -109,22 +109,19 @@ export interface EmployeeSlot {
   marca: string | null;
   modelo: string | null;
   services: string[] | null; // nombres de los servicios
-  start_time: string | null;
-  end_time: string | null;
   status: ReservationStatus | null;
 }
 
 export interface HourlySchedule {
-  hour: string;              // "2025-06-15T10:00:00.000Z"
   hour_label: string;        // "10:00"
   employees: EmployeeSlot[];
 }
 
 export interface UpdateReservationBody {
-  datetime?: string;      // nueva fecha/hora ISO 8601
-  service_ids?: string[]; // nuevos servicios
+  date?: string;          // "2025-06-15" (YYYY-MM-DD)
+  time?: string;          // "13:00" (HH:mm, hora Colombia)
+  service_ids?: string[];
 }
-
 // Lo que el gateway inyecta en cada request
 export interface GatewayUser {
   id: string;
