@@ -3,6 +3,7 @@ import cookieParser from "cookie-parser";
 import morgan from "morgan";
 import ReservationController from "./controller/reservationController";
 import ServiceController from "./controller/serviceController";
+import CategoryController from "./controller/categoryController";
 import SystemController from "./controller/systemController";
 
 class App {
@@ -29,6 +30,9 @@ class App {
     this.app.use("/system", systemController.router);
     this.app.use("/reservations", reservationController.router);
     this.app.use("/services", serviceController.router);
+
+    const categoryController = new CategoryController();
+    this.app.use("/categories", categoryController.router);
   }
 
   private setErrorHandler(): void {

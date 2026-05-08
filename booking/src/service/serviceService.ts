@@ -1,5 +1,5 @@
 import ServiceRepository from "../repository/serviceRepository";
-import { CreateServiceBody, UpdateServiceBody, WashService } from "../types";
+import { CreateServiceBody, UpdateServiceBody, WashService, WashServiceResponse, WashServiceResponseAdmin } from "../types";
 
 class WashServiceService {
   private repository: ServiceRepository;
@@ -8,7 +8,7 @@ class WashServiceService {
     this.repository = new ServiceRepository();
   }
 
-  async getAllServices(): Promise<WashService[]> {
+  async getAllServices(): Promise<WashServiceResponse[]> {
     try {
       const services = await this.repository.findAllActive();
 
@@ -25,7 +25,7 @@ class WashServiceService {
     }
   }
 
-  async getAllServicesAdmin(): Promise<WashService[]> {
+  async getAllServicesAdmin(): Promise<WashServiceResponseAdmin[]> {
     try {
       const services = await this.repository.findAll();
       if (services.length === 0) {
@@ -40,21 +40,39 @@ class WashServiceService {
     }
   }
 
-  async createService(body: CreateServiceBody): Promise<WashService> {
+async createService(body: CreateServiceBody): Promise<WashService> {
   try {
-    if (!body.name || body.price === undefined || !body.description || !body.duration) {
+    const { name, price, description, url, duration, category_id } = body;
+
+    if (!name || price === undefined || !description || !duration || !category_id) {
       throw new Error(
-        "Los campos name, price, description y duration son requeridos."
+        "Los campos name, price, description, duration y category_id son requeridos."
       );
     }
 
-    if (body.price < 0) throw new Error("El precio no puede ser negativo.");
-    if (body.duration <= 0) throw new Error("La duración debe ser mayor a 0 minutos.");
+    if (price < 0) throw new Error("El precio no puede ser negativo.");
+    if (duration <= 0) throw new Error("La duración debe ser mayor a 0 minutos.");
 
-    return await this.repository.create(body);
+    const categoryValid = await this.repository.categoryExists(category_id);
+    if (!categoryValid) {
+      throw new Error(
+        `La categoría con id "${category_id}" no existe o está desactivada.`
+      );
+    }
+
+    return await this.repository.create({
+      name: name.trim(),
+      price,
+      description: description.trim(),
+      url: url ? url.trim() : "",
+      duration,
+      category_id,
+    });
   } catch (error) {
     const err = error as Error;
-    throw new Error(`[WashServiceService] Error al crear servicio: ${err.message}`);
+    throw new Error(
+      `[WashServiceService] Error al crear servicio: ${err.message}`
+    );
   }
 }
 
@@ -76,9 +94,30 @@ async updateService(
     }
 
     const existing = await this.repository.findById(serviceId);
-    if (!existing) throw new Error(`El servicio "${serviceId}" no existe.`);
+    if (!existing) {
+      throw new Error(`El servicio "${serviceId}" no existe.`);
+    }
 
-    return await this.repository.update(serviceId, body);
+    if (body.category_id) {
+      const categoryValid = await this.repository.categoryExists(
+        body.category_id
+      );
+      if (!categoryValid) {
+        throw new Error(
+          `La categoría con id "${body.category_id}" no existe o está desactivada.`
+        );
+      }
+    }
+
+    const data: Partial<WashService> = {};
+    if (body.name)        data.name        = body.name.trim();
+    if (body.price !== undefined) data.price = body.price;
+    if (body.description) data.description = body.description.trim();
+    if (body.url !== undefined)   data.url  = body.url ? body.url.trim() : undefined;
+    if (body.duration !== undefined) data.duration = body.duration;
+    if (body.category_id) data.category_id = body.category_id;
+
+    return await this.repository.update(serviceId, data);
   } catch (error) {
     const err = error as Error;
     throw new Error(
@@ -86,7 +125,6 @@ async updateService(
     );
   }
 }
-
 async deactivateService(serviceId: string): Promise<WashService> {
   try {
     const existing = await this.repository.findById(serviceId);

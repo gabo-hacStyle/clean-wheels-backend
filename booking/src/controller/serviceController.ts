@@ -1,6 +1,6 @@
 import { Router, Request, Response } from "express";
 import WashServiceService from "../service/serviceService";
-import { ApiResponse, CreateServiceBody, UpdateServiceBody, WashService } from "../types";
+import { ApiResponse, CreateServiceBody, UpdateServiceBody, WashService, WashServiceResponse, WashServiceResponseAdmin } from "../types";
 import { requireAdmin, requireGatewayAuth } from "../middlewares/auth.middleware";
 
 class ServiceController {
@@ -47,9 +47,9 @@ class ServiceController {
 
   private async getAllServices(_req: Request, res: Response): Promise<void> {
     try {
-      const services: WashService[] = await this.service.getAllServices();
+      const services: WashServiceResponse[] = await this.service.getAllServices();
 
-      const response: ApiResponse<WashService[]> = {
+      const response: ApiResponse<WashServiceResponse[]> = {
         success: true,
         data: services,
         message: `${services.length} servicio(s) encontrado(s).`,
@@ -73,8 +73,8 @@ class ServiceController {
 
   private async getAllServicesAdmin(_req: Request, res: Response): Promise<void> {
     try {
-      const services: WashService[] = await this.service.getAllServicesAdmin();
-      const response: ApiResponse<WashService[]> = {
+      const services: WashServiceResponseAdmin[] = await this.service.getAllServicesAdmin();
+      const response: ApiResponse<WashServiceResponseAdmin[]> = {
         success: true,
         data: services,
         message: `${services.length} servicio(s) encontrado(s).`,
@@ -91,7 +91,7 @@ class ServiceController {
         res.status(isBusinessError ? 404 : 500).json(response);
       }
     }
-  // Métodos:
+  
 private async createService(req: Request, res: Response): Promise<void> {
   try {
     const body = req.body as CreateServiceBody;
