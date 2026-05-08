@@ -9,9 +9,9 @@ export enum ReservationStatus {
 }
 
 export enum UserRole {
-  CLIENTE = "cliente",
-  ADMIN = "admin",
-  VISITANTE = "visitante",
+  CLIENTE = "CLIENT",
+  ADMIN = "ADMIN",
+  VISITANTE = "GUEST",
 }
 
 // ─── Auth (manejado por Auth MS, solo lo que nos interesa aquí) ──────────────
@@ -40,9 +40,73 @@ export interface WashService {
   name: string;
   price: number;
   description: string;
+  url: string;
   duration: number;
   is_active: boolean;
+  category_id: string;
   created_at: Date;
+}
+
+export interface WashServiceResponseAdmin {
+  id: string;
+  name: string;
+  price: number;
+  description: string;
+  duration: number;
+  is_active: boolean;
+  category_name: string;
+  image_url: string | null;
+  created_at: Date;
+}
+
+export interface WashServiceResponse {
+  id: string;
+  name: string;
+  price: number;
+  description: string;
+  duration: number;
+  category_name: string;
+  image_url: string | null; 
+}
+
+export interface Category {
+  id: string;
+  name: string;
+  description: string;
+  created_at: Date;
+  updated_at: Date; 
+}
+
+export interface CategoryWithServices extends Category {
+  services: WashService[];
+}
+
+export interface CreateCategoryBody {
+  name: string;
+  description: string;
+}
+
+export interface UpdateCategoryBody {
+  name?: string;
+  description?: string;
+}
+
+export interface CreateServiceBody {
+  name: string;
+  price: number;
+  description: string;
+  url: string | null;
+  duration: number;
+  category_id: string;
+}
+
+export interface UpdateServiceBody {
+  name?: string;
+  price?: number;
+  description?: string;
+  url?: string;
+  duration?: number;
+  category_id?: string; 
 }
 
 // ─── Reservation ─────────────────────────────────────────────────────────────
@@ -176,19 +240,7 @@ export interface WeeklyCalendarQuery {
   week_start: string; // ISO date "2025-06-15" — lunes de la semana
 }
 
-export interface CreateServiceBody {
-  name: string;
-  price: number;
-  description: string;
-  duration: number; // minutos
-}
 
-export interface UpdateServiceBody {
-  name?: string;
-  price?: number;
-  description?: string;
-  duration?: number;
-}
 
 export enum NotificationType {
   RESERVA_CREADA = "reserva_creada",
