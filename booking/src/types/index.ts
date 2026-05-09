@@ -251,3 +251,10 @@ export enum NotificationType {
   SOLICITUD_FEEDBACK = "solicitud_feedback",
   REPORTE_DIARIO = "reporte_diario",
 }
+
+export interface ReservationFormatted
+  extends Omit<Reservation, "datetime" | "created_at" | "updated_at"> {
+  date: string;
+  time: string;
+  services: Pick<WashService, "id" | "name" | "price" | "duration">[];
+}
