@@ -65,3 +65,20 @@ export function formatColombia(dt: Date): string {
     hour12: false,
   });
 }
+
+
+
+export function splitDatetimeColombia(dt: Date | string): {
+  date: string;
+  time: string;
+} {
+  const d = typeof dt === "string" ? new Date(dt) : dt;
+  const date = d.toLocaleDateString("en-CA", { timeZone: "America/Bogota" }); // "2026-05-14"
+  const time = d.toLocaleTimeString("es-CO", {
+    timeZone: "America/Bogota",
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+  }); // "16:00"
+  return { date, time };
+}

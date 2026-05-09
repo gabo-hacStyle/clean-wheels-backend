@@ -11,6 +11,7 @@ import {
   CreateReservationBody,
   HourlySchedule,
   Reservation,
+  ReservationFormatted,
   ReservationWithServices,
   UpdateReservationBody,
   UserRole,
@@ -44,6 +45,7 @@ class ReservationController {
       this.getActiveReservationsByUser.bind(this)
     );
     this.router.get("/calendar/week", this.getWeeklyCalendar.bind(this));
+    this.router.get("/vehicle/:vehicleId", requireGatewayAuth, requireAdmin, this.getReservationsByVehicle.bind(this));
   }
 
   private async checkAvailability(req: Request, res: Response): Promise<void> {
@@ -288,7 +290,7 @@ private async getActiveReservationsByUser(
     const { userId } = req.params;
     const gatewayUser = req.gatewayUser!;
 
-    // Cliente solo puede ver sus propias reservas; admin puede ver cualquier usuario
+    
     if (
       gatewayUser.role !== UserRole.ADMIN &&
       gatewayUser.id !== userId
@@ -303,7 +305,7 @@ private async getActiveReservationsByUser(
 
     const reservations = await this.service.getActiveReservationsByUser(userId);
 
-    const response: ApiResponse<ReservationWithServices[]> = {
+    const response: ApiResponse<ReservationFormatted[]> = {
       success: true,
       data: reservations,
       message:
@@ -353,7 +355,50 @@ private async getWeeklyCalendar(req: Request, res: Response): Promise<void> {
     res.status(isBusinessError ? 422 : 500).json(response);
   }
 }
-  
+
+private async getReservationsByVehicle(
+  req: Request<{ vehicleId: string }>,
+  res: Response
+): Promise<void> {
+  try {
+    const { vehicleId } = req.params;
+    const gatewayUser = req.gatewayUser!;
+
+    if (gatewayUser.role !== UserRole.ADMIN) {
+      const response: ApiResponse<null> = {
+        success: false,
+        error: "No tienes permisos para ver las reservas de otro usuario.",
+      };
+      res.status(403).json(response);
+      return;
+    }
+
+    const reservations =
+      await this.service.getReservationsByVehicle(vehicleId);
+
+    const response: ApiResponse<ReservationFormatted[]> = {
+      success: true,
+      data: reservations,
+      message:
+        reservations.length > 0
+          ? `${reservations.length} reserva(s) encontrada(s) para el vehículo.`
+          : "El vehículo no tiene reservas registradas.",
+    };
+
+    res.status(200).json(response);
+  } catch (error) {
+    const err = error as Error;
+
+    const isBusinessError = err.message.includes("no existe");
+
+    const response: ApiResponse<null> = {
+      success: false,
+      error: err.message,
+    };
+
+    res.status(isBusinessError ? 404 : 500).json(response);
+  }
+}
 
   
 }

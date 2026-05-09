@@ -59,4 +59,7 @@ server.on('listening', () => {
   const address = server.address();
   const bind = typeof address === 'string' ? `pipe ${address}` : `port ${address?.port}`;
   serverDebug(`Listening on ${bind}`);
+
+  console.log(`Servidor escuchando en ${bind}`);
+  console.log(`Modo: ${process.env.NODE_ENV || 'desarrollo'}`);
 });

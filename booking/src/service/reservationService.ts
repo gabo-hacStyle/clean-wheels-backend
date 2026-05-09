@@ -1,6 +1,6 @@
 import ReservationRepository from "../repository/reservationRepository";
 import NotificationClient from "../infraestructure/email.client";
-import { NotificationType } from "../types";
+import { NotificationType, ReservationFormatted} from "../types";
 import {
   AvailabilityResult,
   CalendarDay,
@@ -24,7 +24,7 @@ import {
 } from "../types";
 
 // Agregar al inicio de reservation.service.ts
-import { parseColombiaDT, assertNotPast, formatColombia } from "../utils/date.utils";
+import { parseColombiaDT, assertNotPast, formatColombia, splitDatetimeColombia } from "../utils/date.utils";
 
 
 class ReservationService {
@@ -36,134 +36,135 @@ class ReservationService {
     this.notificationClient = NotificationClient.getInstance();
   }
 
-async checkAvailability(
-  body: CheckAvailabilityBody
-): Promise<AvailabilityResult> {
-  try {
-    const { date, time, total_duration } = body;
+  async checkAvailability(
+    body: CheckAvailabilityBody
+  ): Promise<AvailabilityResult> {
+    try {
+      const { date, time, total_duration } = body;
 
-    if (!date || !time) {
-      throw new Error("Los campos date y time son requeridos.");
+      if (!date || !time) {
+        throw new Error("Los campos date y time son requeridos.");
+      }
+
+      if (total_duration === undefined || total_duration === null) {
+        throw new Error("El campo total_duration es requerido.");
+      }
+
+      if (total_duration <= 0) {
+        throw new Error("La duración total debe ser mayor a 0 minutos.");
+      }
+
+      // Normalizar a UTC
+      const start = parseColombiaDT(date, time);
+
+      // Validar que no sea en el pasado
+      assertNotPast(start, `El horario "${date} ${time}" (hora Colombia)`);
+
+      const end = new Date(start.getTime() + total_duration * 60 * 1000);
+      const maxSlots = this.repository.getMaxConcurrentReservations();
+      const overlapping = await this.repository.countOverlappingReservations(
+        start,
+        end
+      );
+
+      const slotsRemaining = maxSlots - overlapping;
+      const available = slotsRemaining > 0;
+
+      return {
+        available,
+        datetime: start.toISOString(),
+        end_datetime: end.toISOString(),
+        total_duration,
+        concurrent_reservations: overlapping,
+        slots_remaining: slotsRemaining,
+        message: available
+          ? `Hay disponibilidad para el ${date} a las ${time} (hora Colombia). Quedan ${slotsRemaining} cupo(s) de ${maxSlots}.`
+          : `No hay disponibilidad para el ${date} a las ${time} (hora Colombia). Los ${maxSlots} cupos están ocupados durante ese período.`,
+      };
+    } catch (error) {
+      const err = error as Error;
+      throw new Error(
+        `[ReservationService] Error al verificar disponibilidad: ${err.message}`
+      );
     }
-
-    if (total_duration === undefined || total_duration === null) {
-      throw new Error("El campo total_duration es requerido.");
-    }
-
-    if (total_duration <= 0) {
-      throw new Error("La duración total debe ser mayor a 0 minutos.");
-    }
-
-    // Normalizar a UTC
-    const start = parseColombiaDT(date, time);
-
-    // Validar que no sea en el pasado
-    assertNotPast(start, `El horario "${date} ${time}" (hora Colombia)`);
-
-    const end = new Date(start.getTime() + total_duration * 60 * 1000);
-    const maxSlots = this.repository.getMaxConcurrentReservations();
-    const overlapping = await this.repository.countOverlappingReservations(
-      start,
-      end
-    );
-
-    const slotsRemaining = maxSlots - overlapping;
-    const available = slotsRemaining > 0;
-
-    return {
-      available,
-      datetime: start.toISOString(),
-      end_datetime: end.toISOString(),
-      total_duration,
-      concurrent_reservations: overlapping,
-      slots_remaining: slotsRemaining,
-      message: available
-        ? `Hay disponibilidad para el ${date} a las ${time} (hora Colombia). Quedan ${slotsRemaining} cupo(s) de ${maxSlots}.`
-        : `No hay disponibilidad para el ${date} a las ${time} (hora Colombia). Los ${maxSlots} cupos están ocupados durante ese período.`,
-    };
-  } catch (error) {
-    const err = error as Error;
-    throw new Error(
-      `[ReservationService] Error al verificar disponibilidad: ${err.message}`
-    );
   }
-}
 
-async createReservation(
-  body: CreateReservationBody
-): Promise<ReservationWithServices> {
-  try {
-    const { vehicle_id, date, time, service_ids } = body;
+  async createReservation(
+    body: CreateReservationBody
+  ): Promise<ReservationWithServices> {
+    try {
+      const { vehicle_id, date, time, service_ids } = body;
 
-    if (!date || !time) {
-      throw new Error("Los campos date y time son requeridos.");
-    }
+      if (!date || !time) {
+        throw new Error("Los campos date y time son requeridos.");
+      }
 
-    if (!service_ids || service_ids.length === 0) {
-      throw new Error("Debe seleccionar al menos un servicio.");
-    }
+      if (!service_ids || service_ids.length === 0) {
+        throw new Error("Debe seleccionar al menos un servicio.");
+      }
 
-    const vehicleExists = await this.repository.findVehicleById(vehicle_id);
-    if (!vehicleExists) {
+      const vehicleExists = await this.repository.findVehicleById(vehicle_id);
+      if (!vehicleExists) {
+        throw new Error(
+          `El vehículo con id "${vehicle_id}" no existe en el sistema.`
+        );
+      }
+
+      const foundServices: WashService[] =
+        await this.repository.findServicesByIds(service_ids);
+
+      if (foundServices.length !== service_ids.length) {
+        const foundIds = foundServices.map((s) => s.id);
+        const invalidIds = service_ids.filter((id) => !foundIds.includes(id));
+        throw new Error(
+          `Los siguientes servicios no existen o no están disponibles: ${invalidIds.join(", ")}`
+        );
+      }
+
+      // Normalizar hora Colombia → UTC
+      const start = parseColombiaDT(date, time);
+
+      // Validar que no sea en el pasado
+      assertNotPast(start, `El horario "${date} ${time}" (hora Colombia)`);
+
+      const totalDuration = foundServices.reduce(
+        (sum, s) => sum + Number(s.duration),
+        0
+      );
+      const end = new Date(start.getTime() + totalDuration * 60 * 1000);
+
+      const maxSlots = this.repository.getMaxConcurrentReservations();
+      const overlapping = await this.repository.countOverlappingReservations(
+        start,
+        end
+      );
+
+      if (overlapping >= maxSlots) {
+        throw new Error(
+          `El horario del ${date} a las ${time} (hora Colombia) no está disponible. Los ${maxSlots} cupos están ocupados durante ese período.`
+        );
+      }
+
+      const reservation = await this.repository.createReservationWithServices(
+        vehicle_id,
+        start,  // se guarda en UTC en PostgreSQL
+        foundServices
+      );
+
+      await this.notificationClient.trigger(
+        reservation.id,
+        NotificationType.RESERVA_CREADA
+      );
+
+      return reservation;
+    } catch (error) {
+      const err = error as Error;
       throw new Error(
-        `El vehículo con id "${vehicle_id}" no existe en el sistema.`
+        `[ReservationService] Error al crear la reserva: ${err.message}`
       );
     }
-
-    const foundServices: WashService[] =
-      await this.repository.findServicesByIds(service_ids);
-
-    if (foundServices.length !== service_ids.length) {
-      const foundIds = foundServices.map((s) => s.id);
-      const invalidIds = service_ids.filter((id) => !foundIds.includes(id));
-      throw new Error(
-        `Los siguientes servicios no existen o no están disponibles: ${invalidIds.join(", ")}`
-      );
-    }
-
-    // Normalizar hora Colombia → UTC
-    const start = parseColombiaDT(date, time);
-
-    // Validar que no sea en el pasado
-    assertNotPast(start, `El horario "${date} ${time}" (hora Colombia)`);
-
-    const totalDuration = foundServices.reduce(
-      (sum, s) => sum + Number(s.duration),
-      0
-    );
-    const end = new Date(start.getTime() + totalDuration * 60 * 1000);
-
-    const maxSlots = this.repository.getMaxConcurrentReservations();
-    const overlapping = await this.repository.countOverlappingReservations(
-      start,
-      end
-    );
-
-    if (overlapping >= maxSlots) {
-      throw new Error(
-        `El horario del ${date} a las ${time} (hora Colombia) no está disponible. Los ${maxSlots} cupos están ocupados durante ese período.`
-      );
-    }
-
-    const reservation = await this.repository.createReservationWithServices(
-      vehicle_id,
-      start,  // se guarda en UTC en PostgreSQL
-      foundServices
-    );
-
-    await this.notificationClient.trigger(
-      reservation.id,
-      NotificationType.RESERVA_CREADA
-    );
-
-    return reservation;
-  } catch (error) {
-    const err = error as Error;
-    throw new Error(
-      `[ReservationService] Error al crear la reserva: ${err.message}`
-    );
   }
-}
+
 
   async getUpcomingSchedule(): Promise<HourlySchedule[]> {
   try {
@@ -220,7 +221,7 @@ async createReservation(
             slot_index: idx + 1,
             reservation_id: reservation.id,
             vehicle_id: reservation.vehicle_id,
-            placa: resWithVehicle.placa ?? null,
+           placa: resWithVehicle.placa ? censorPlaca(resWithVehicle.placa) : null,
             marca: resWithVehicle.marca ?? null,
             modelo: resWithVehicle.modelo ?? null,
             services: reservation.services.map((s: any) =>
@@ -498,13 +499,32 @@ async updateReservation(
 
   async getActiveReservationsByUser(
     userId: string
-  ): Promise<ReservationWithServices[]> {
+  ): Promise<ReservationFormatted[]> {
     try {
       if (!userId || userId.trim() === "") {
         throw new Error("El user_id es requerido.");
       }
 
-      return await this.repository.findActiveReservationsByUserId(userId);
+      const reservations = await this.repository.findActiveReservationsByUserId(userId);
+
+      return reservations.map((r) => {
+        const { date, time } = splitDatetimeColombia(r.datetime);
+
+        // Extraer solo los campos necesarios de la reserva
+        const { datetime, created_at, updated_at, services, ...rest } = r as any;
+
+        return {
+          ...rest,
+          date,
+          time,
+          services: (services as WashService[]).map((s) => ({
+            id:       s.id,
+            name:     s.name,
+            price:    s.price,
+            duration: s.duration,
+          })),
+        };
+      });
     } catch (error) {
       const err = error as Error;
       throw new Error(
@@ -585,6 +605,50 @@ async updateReservation(
       );
     }
   }
+
+async getReservationsByVehicle(
+  vehicleId: string
+): Promise<ReservationFormatted[]> {
+  try {
+    if (!vehicleId || vehicleId.trim() === "") {
+      throw new Error("El vehicleId es requerido.");
+    }
+
+    const reservations =
+      await this.repository.findReservationsByVehicleId(vehicleId);
+
+    return reservations.map((r) => {
+      const { date, time } = splitDatetimeColombia(r.datetime);
+
+      // Extraer solo los campos necesarios de la reserva
+      const { datetime, created_at, updated_at, services, ...rest } = r as any;
+
+      return {
+        ...rest,
+        date,
+        time,
+        services: (services as WashService[]).map((s) => ({
+          id:       s.id,
+          name:     s.name,
+          price:    s.price,
+          duration: s.duration,
+        })),
+      };
+    });
+  } catch (error) {
+    const err = error as Error;
+    throw new Error(
+      `[ReservationService] Error al obtener el historial del vehículo: ${err.message}`
+    );
+  }
+}
 }
 
+export function censorPlaca(placa: string): string {
+  if (!placa || placa.length <= 2) return placa;
+  const first = placa[0];
+  const last = placa[placa.length - 1];
+  const middle = "*".repeat(placa.length - 2);
+  return `${first}${middle}${last}`;
+}
 export default ReservationService;
