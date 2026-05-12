@@ -15,6 +15,7 @@ import {
   ReservationWithServices,
   UpdateReservationBody,
   UserRole,
+  Vehicle,
   WeeklyCalendar,
   WeeklyCalendarQuery,
 } from "../types";
@@ -46,6 +47,7 @@ class ReservationController {
     );
     this.router.get("/calendar/week", this.getWeeklyCalendar.bind(this));
     this.router.get("/vehicle/:vehicleId", requireGatewayAuth, requireAdmin, this.getReservationsByVehicle.bind(this));
+    this.router.get("/:userId/vehicles", requireGatewayAuth, this.getVehiclesByUser.bind(this));
   }
 
   private async checkAvailability(req: Request, res: Response): Promise<void> {
@@ -196,211 +198,253 @@ class ReservationController {
   }
 }
 
-private async updateReservation(
-  req: Request<{ id: string }>,
-  res: Response
-): Promise<void> {
-  try {
-    const { id } = req.params;
-    const body = req.body as UpdateReservationBody;
-    const user = req.gatewayUser!;
+  private async updateReservation(
+    req: Request<{ id: string }>,
+    res: Response
+  ): Promise<void> {
+    try {
+      const { id } = req.params;
+      const body = req.body as UpdateReservationBody;
+      const user = req.gatewayUser!;
 
-    const updated = await this.service.updateReservation(id, body, user);
+      const updated = await this.service.updateReservation(id, body, user);
 
-    const response: ApiResponse<ReservationWithServices> = {
-      success: true,
-      data: updated,
-      message: "Reserva actualizada exitosamente.",
-    };
+      const response: ApiResponse<ReservationWithServices> = {
+        success: true,
+        data: updated,
+        message: "Reserva actualizada exitosamente.",
+      };
 
-    res.status(200).json(response);
-  } catch (error) {
-    const err = error as Error;
+      res.status(200).json(response);
+    } catch (error) {
+      const err = error as Error;
 
-    const isForbidden = err.message.includes("No tienes permisos");
+      const isForbidden = err.message.includes("No tienes permisos");
 
-    const isBusinessError =
-      err.message.includes("no existe") ||
-      err.message.includes("no puede modificarse") ||
-      err.message.includes("no está disponible") ||
-      err.message.includes("no existen o no están disponibles") ||
-      err.message.includes("formato de fecha") ||
-      err.message.includes("fecha pasada") ||
-      err.message.includes("al menos un campo") ||
-      isForbidden;
+      const isBusinessError =
+        err.message.includes("no existe") ||
+        err.message.includes("no puede modificarse") ||
+        err.message.includes("no está disponible") ||
+        err.message.includes("no existen o no están disponibles") ||
+        err.message.includes("formato de fecha") ||
+        err.message.includes("fecha pasada") ||
+        err.message.includes("al menos un campo") ||
+        isForbidden;
 
-    const response: ApiResponse<null> = {
-      success: false,
-      error: err.message,
-    };
-
-    res
-      .status(isForbidden ? 403 : isBusinessError ? 422 : 500)
-      .json(response);
-  }
-}
-
-
-private async completeReservation(
-  req: Request<{ id: string }>,
-  res: Response
-): Promise<void> {
-  try {
-    const { id } = req.params;
-    const body = req.body as CompleteReservationBody;
-    const user = req.gatewayUser!;
-
-    const result = await this.service.completeReservation(id, body, user);
-
-    const response: ApiResponse<CompleteReservationResult> = {
-      success: true,
-      data: result,
-      message: "Reserva completada y factura generada exitosamente.",
-    };
-
-    res.status(200).json(response);
-  } catch (error) {
-    const err = error as Error;
-
-    const isForbidden =
-      err.message.includes("Solo un administrador");
-
-    const isBusinessError =
-      err.message.includes("no existe") ||
-      err.message.includes("no puede completarse") ||
-      err.message.includes("payment_method") ||
-      err.message.includes("Método de pago") ||
-      err.message.includes("usuario asociado") ||
-      isForbidden;
-
-    const response: ApiResponse<null> = {
-      success: false,
-      error: err.message,
-    };
-
-    res.status(isForbidden ? 403 : isBusinessError ? 422 : 500).json(response);
-  }
-}
-
-private async getActiveReservationsByUser(
-   req: Request<{ userId: string }>,  
-  res: Response
-): Promise<void> {
-  try {
-    const { userId } = req.params;
-    const gatewayUser = req.gatewayUser!;
-
-    
-    if (
-      gatewayUser.role !== UserRole.ADMIN &&
-      gatewayUser.id !== userId
-    ) {
       const response: ApiResponse<null> = {
         success: false,
-        error: "No tienes permisos para ver las reservas de otro usuario.",
+        error: err.message,
       };
-      res.status(403).json(response);
-      return;
+
+      res
+        .status(isForbidden ? 403 : isBusinessError ? 422 : 500)
+        .json(response);
     }
-
-    const reservations = await this.service.getActiveReservationsByUser(userId);
-
-    const response: ApiResponse<ReservationFormatted[]> = {
-      success: true,
-      data: reservations,
-      message:
-        reservations.length > 0
-          ? `${reservations.length} reserva(s) activa(s) encontrada(s).`
-          : "El usuario no tiene reservas activas.",
-    };
-
-    res.status(200).json(response);
-  } catch (error) {
-    const err = error as Error;
-    const response: ApiResponse<null> = {
-      success: false,
-      error: err.message,
-    };
-    res.status(500).json(response);
   }
-}
 
-private async getWeeklyCalendar(req: Request, res: Response): Promise<void> {
-  try {
-    const query: WeeklyCalendarQuery = {
-      week_start: req.query.week_start as string,
-    };
 
-    const calendar = await this.service.getWeeklyCalendar(query);
+  private async completeReservation(
+    req: Request<{ id: string }>,
+    res: Response
+  ): Promise<void> {
+    try {
+      const { id } = req.params;
+      const body = req.body as CompleteReservationBody;
+      const user = req.gatewayUser!;
 
-    const response: ApiResponse<WeeklyCalendar> = {
-      success: true,
-      data: calendar,
-      message: `Calendario de la semana del ${calendar.week_start} al ${calendar.week_end}.`,
-    };
+      const result = await this.service.completeReservation(id, body, user);
 
-    res.status(200).json(response);
-  } catch (error) {
-    const err = error as Error;
+      const response: ApiResponse<CompleteReservationResult> = {
+        success: true,
+        data: result,
+        message: "Reserva completada y factura generada exitosamente.",
+      };
 
-    const isBusinessError =
-      err.message.includes("requerido") ||
-      err.message.includes("Formato de fecha");
+      res.status(200).json(response);
+    } catch (error) {
+      const err = error as Error;
 
-    const response: ApiResponse<null> = {
-      success: false,
-      error: err.message,
-    };
+      const isForbidden =
+        err.message.includes("Solo un administrador");
 
-    res.status(isBusinessError ? 422 : 500).json(response);
-  }
-}
+      const isBusinessError =
+        err.message.includes("no existe") ||
+        err.message.includes("no puede completarse") ||
+        err.message.includes("payment_method") ||
+        err.message.includes("Método de pago") ||
+        err.message.includes("usuario asociado") ||
+        isForbidden;
 
-private async getReservationsByVehicle(
-  req: Request<{ vehicleId: string }>,
-  res: Response
-): Promise<void> {
-  try {
-    const { vehicleId } = req.params;
-    const gatewayUser = req.gatewayUser!;
-
-    if (gatewayUser.role !== UserRole.ADMIN) {
       const response: ApiResponse<null> = {
         success: false,
-        error: "No tienes permisos para ver las reservas de otro usuario.",
+        error: err.message,
       };
-      res.status(403).json(response);
-      return;
+
+      res.status(isForbidden ? 403 : isBusinessError ? 422 : 500).json(response);
     }
-
-    const reservations =
-      await this.service.getReservationsByVehicle(vehicleId);
-
-    const response: ApiResponse<ReservationFormatted[]> = {
-      success: true,
-      data: reservations,
-      message:
-        reservations.length > 0
-          ? `${reservations.length} reserva(s) encontrada(s) para el vehículo.`
-          : "El vehículo no tiene reservas registradas.",
-    };
-
-    res.status(200).json(response);
-  } catch (error) {
-    const err = error as Error;
-
-    const isBusinessError = err.message.includes("no existe");
-
-    const response: ApiResponse<null> = {
-      success: false,
-      error: err.message,
-    };
-
-    res.status(isBusinessError ? 404 : 500).json(response);
   }
-}
 
-  
+  private async getActiveReservationsByUser(
+    req: Request<{ userId: string }>,  
+    res: Response
+  ): Promise<void> {
+    try {
+      const { userId } = req.params;
+      const gatewayUser = req.gatewayUser!;
+
+      
+      if (
+        gatewayUser.role !== UserRole.ADMIN &&
+        gatewayUser.id !== userId
+      ) {
+        const response: ApiResponse<null> = {
+          success: false,
+          error: "No tienes permisos para ver las reservas de otro usuario.",
+        };
+        res.status(403).json(response);
+        return;
+      }
+
+      const reservations = await this.service.getActiveReservationsByUser(userId);
+
+      const response: ApiResponse<ReservationFormatted[]> = {
+        success: true,
+        data: reservations,
+        message:
+          reservations.length > 0
+            ? `${reservations.length} reserva(s) activa(s) encontrada(s).`
+            : "El usuario no tiene reservas activas.",
+      };
+
+      res.status(200).json(response);
+    } catch (error) {
+      const err = error as Error;
+      const response: ApiResponse<null> = {
+        success: false,
+        error: err.message,
+      };
+      res.status(500).json(response);
+    }
+  }
+
+  private async getWeeklyCalendar(req: Request, res: Response): Promise<void> {
+    try {
+      const query: WeeklyCalendarQuery = {
+        week_start: req.query.week_start as string,
+      };
+
+      const calendar = await this.service.getWeeklyCalendar(query);
+
+      const response: ApiResponse<WeeklyCalendar> = {
+        success: true,
+        data: calendar,
+        message: `Calendario de la semana del ${calendar.week_start} al ${calendar.week_end}.`,
+      };
+
+      res.status(200).json(response);
+    } catch (error) {
+      const err = error as Error;
+
+      const isBusinessError =
+        err.message.includes("requerido") ||
+        err.message.includes("Formato de fecha");
+
+      const response: ApiResponse<null> = {
+        success: false,
+        error: err.message,
+      };
+
+      res.status(isBusinessError ? 422 : 500).json(response);
+    }
+  }
+
+  private async getReservationsByVehicle(
+    req: Request<{ vehicleId: string }>,
+    res: Response
+  ): Promise<void> {
+    try {
+      const { vehicleId } = req.params;
+      const gatewayUser = req.gatewayUser!;
+
+      if (gatewayUser.role !== UserRole.ADMIN) {
+        const response: ApiResponse<null> = {
+          success: false,
+          error: "No tienes permisos para ver las reservas de otro usuario.",
+        };
+        res.status(403).json(response);
+        return;
+      }
+
+      const reservations =
+        await this.service.getReservationsByVehicle(vehicleId);
+
+      const response: ApiResponse<ReservationFormatted[]> = {
+        success: true,
+        data: reservations,
+        message:
+          reservations.length > 0
+            ? `${reservations.length} reserva(s) encontrada(s) para el vehículo.`
+            : "El vehículo no tiene reservas registradas.",
+      };
+
+      res.status(200).json(response);
+    } catch (error) {
+      const err = error as Error;
+
+      const isBusinessError = err.message.includes("no existe");
+
+      const response: ApiResponse<null> = {
+        success: false,
+        error: err.message,
+      };
+
+      res.status(isBusinessError ? 404 : 500).json(response);
+    }
+  }
+
+  private async getVehiclesByUser(
+    req: Request<{ userId: string }>,
+    res: Response
+  ): Promise<void> {
+    try {
+      const { userId } = req.params;
+      const gatewayUser = req.gatewayUser!;
+
+      
+      if (
+        gatewayUser.role !== UserRole.ADMIN &&
+        gatewayUser.id !== userId
+      ) {
+        const response: ApiResponse<null> = {
+          success: false,
+          error: "No tienes permisos para ver los vehículos de otro usuario.",
+        };
+        res.status(403).json(response);
+        return;
+      }
+
+      const vehicles = await this.service.getVehiclesByUser(userId);
+
+      const response: ApiResponse<Vehicle[]> = {
+        success: true,
+        data: vehicles,
+        message:
+          vehicles.length > 0
+            ? `${vehicles.length} vehículo(s) encontrado(s).`
+            : "El usuario no tiene vehículos registrados.",
+      };
+
+      res.status(200).json(response);
+    } catch (error) {
+      const err = error as Error;
+      const response: ApiResponse<null> = {
+        success: false,
+        error: err.message,
+      };
+      res.status(500).json(response);
+    }
+  }
+
 }
 
 export default ReservationController;

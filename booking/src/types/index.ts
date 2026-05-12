@@ -29,7 +29,6 @@ export interface Vehicle {
   placa: string;
   marca: string;
   modelo: string;
-  color: string;
   created_at: Date;
 }
 

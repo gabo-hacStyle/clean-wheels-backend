@@ -1,6 +1,6 @@
 import ReservationRepository from "../repository/reservationRepository";
 import NotificationClient from "../infraestructure/email.client";
-import { NotificationType, ReservationFormatted} from "../types";
+import { NotificationType, ReservationFormatted, Vehicle} from "../types";
 import {
   AvailabilityResult,
   CalendarDay,
@@ -606,43 +606,59 @@ async updateReservation(
     }
   }
 
-async getReservationsByVehicle(
-  vehicleId: string
-): Promise<ReservationFormatted[]> {
-  try {
-    if (!vehicleId || vehicleId.trim() === "") {
-      throw new Error("El vehicleId es requerido.");
+  async getReservationsByVehicle(
+    vehicleId: string
+  ): Promise<ReservationFormatted[]> {
+    try {
+      if (!vehicleId || vehicleId.trim() === "") {
+        throw new Error("El vehicleId es requerido.");
+      }
+
+      const reservations =
+        await this.repository.findReservationsByVehicleId(vehicleId);
+
+      return reservations.map((r) => {
+        const { date, time } = splitDatetimeColombia(r.datetime);
+
+        // Extraer solo los campos necesarios de la reserva
+        const { datetime, created_at, updated_at, services, ...rest } = r as any;
+
+        return {
+          ...rest,
+          date,
+          time,
+          services: (services as WashService[]).map((s) => ({
+            id:       s.id,
+            name:     s.name,
+            price:    s.price,
+            duration: s.duration,
+          })),
+        };
+      });
+    } catch (error) {
+      const err = error as Error;
+      throw new Error(
+        `[ReservationService] Error al obtener el historial del vehículo: ${err.message}`
+      );
     }
+  }
+  async getVehiclesByUser(userId: string): Promise<Vehicle[]> {
+    try {      if (!userId || userId.trim() === "") {
+        throw new Error("El userId es requerido.");
+      }
+      const vehicles = await this.repository.findVehiclesByUserId(userId);
 
-    const reservations =
-      await this.repository.findReservationsByVehicleId(vehicleId);
-
-    return reservations.map((r) => {
-      const { date, time } = splitDatetimeColombia(r.datetime);
-
-      // Extraer solo los campos necesarios de la reserva
-      const { datetime, created_at, updated_at, services, ...rest } = r as any;
-
-      return {
-        ...rest,
-        date,
-        time,
-        services: (services as WashService[]).map((s) => ({
-          id:       s.id,
-          name:     s.name,
-          price:    s.price,
-          duration: s.duration,
-        })),
-      };
-    });
-  } catch (error) {
-    const err = error as Error;
-    throw new Error(
-      `[ReservationService] Error al obtener el historial del vehículo: ${err.message}`
-    );
+      return vehicles;
+    } catch (error) {
+      const err = error as Error;
+      throw new Error(
+        `[ReservationService] Error al obtener los vehículos del usuario: ${err.message}`
+      );
+    }
   }
 }
-}
+  
+
 
 export function censorPlaca(placa: string): string {
   if (!placa || placa.length <= 2) return placa;
