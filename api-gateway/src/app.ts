@@ -47,4 +47,8 @@ app.get('/health', (_req, res) => {
   res.json({ status: 'ok', service: 'api-gateway' });
 });
 
+app.use((_req, res) => {
+    res.status(404).json({ error: 'Ruta no encontrada' });
+});
+
 export default app;

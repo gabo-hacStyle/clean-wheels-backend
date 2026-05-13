@@ -66,7 +66,8 @@ class AdminService {
             return {
                 total_incomes: Math.round(total_incomes * 100) / 100,
                 total_reservations:  details.length,
-                details,
+                from_date: from,
+                to_date: to
             };
         } catch (error) {
             const err = error as Error;

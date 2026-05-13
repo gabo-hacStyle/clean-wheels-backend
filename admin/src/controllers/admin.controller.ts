@@ -50,7 +50,6 @@ export const adminController = {
             const response: ApiResponse<IngressSummary> = {
                 success: true,
                 data: report,
-                message: `Ingresos del periodo ${query.from} al ${query.to}. Total: $${report.total_incomes}.`,
             };
 
             res.status(200).json(response);
