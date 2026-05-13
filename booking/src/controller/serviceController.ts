@@ -43,6 +43,13 @@ class ServiceController {
       requireAdmin,
       this.deleteService.bind(this)
     );
+
+    this.router.patch(
+      "/:id/activate",
+      requireGatewayAuth,
+      requireAdmin,
+      this.activateService.bind(this)
+    );
   }
 
   private async getAllServices(_req: Request, res: Response): Promise<void> {
@@ -182,6 +189,30 @@ private async deleteService(req: Request<{ id: string }>, res: Response): Promis
   } catch (error) {
     const err = error as Error;
     const isBusinessError = err.message.includes("no existe");
+
+    res.status(isBusinessError ? 422 : 500).json({
+      success: false,
+      error: err.message,
+    });
+  }
+}
+
+private async activateService(req: Request<{ id: string }>, res: Response): Promise<void> {
+  try {
+    const { id } = req.params;
+    const service = await this.service.activateService(id);
+
+    const response: ApiResponse<WashService> = {
+      success: true,
+      data: service,
+      message: "Servicio activado exitosamente.",
+    };
+    res.status(200).json(response);
+  } catch (error) {
+    const err = error as Error;
+    const isBusinessError =
+      err.message.includes("no existe") ||
+      err.message.includes("ya está activo");
 
     res.status(isBusinessError ? 422 : 500).json({
       success: false,

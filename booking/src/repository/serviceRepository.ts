@@ -166,6 +166,25 @@ async delete(serviceId: string): Promise<void> {
     );
   }
 }
+async activate(serviceId: string): Promise<WashService> {
+  try {
+    const rows = await this.db.query<WashService>(
+      `UPDATE services SET is_active = true, updated_at = NOW()
+       WHERE id = $1
+       RETURNING *`,
+      [serviceId]
+    );
+    if (rows.length === 0) {
+      throw new Error(`Servicio "${serviceId}" no encontrado.`);
+    }
+    return rows[0];
+  } catch (error) {
+    const err = error as Error;
+    throw new Error(
+      `[ServiceRepository] Error activando servicio "${serviceId}": ${err.message}`
+    );
+  }
+}
 }
 
 export default ServiceRepository;
