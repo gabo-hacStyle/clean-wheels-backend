@@ -519,18 +519,18 @@ class ReservationRepository {
 
 
   async findReservationsByVehicleId(
-  vehicleId: string
+  placa: string
 ): Promise<ReservationWithServices[]> {
   try {
     // Verificar que el vehículo existe
     const vehicle = await this.db.query<{ id: string }>(
-      `SELECT id FROM vehicles WHERE id = $1`,
-      [vehicleId]
+      `SELECT id FROM vehicles WHERE placa = $1`,
+      [placa]
     );
 
     if (vehicle.length === 0) {
       throw new Error(
-        `El vehículo con id "${vehicleId}" no existe en el sistema.`
+        `El vehículo con placa "${placa}" no existe en el sistema.`
       );
     }
 
@@ -568,7 +568,7 @@ class ReservationRepository {
        WHERE r.vehicle_id = $1
        GROUP BY r.id, v.placa, v.marca, v.modelo
        ORDER BY r.datetime DESC`,
-      [vehicleId]
+      [placa]
     );
 
     return rows.map((row) => {
@@ -607,7 +607,7 @@ class ReservationRepository {
   } catch (error) {
     const err = error as Error;
     throw new Error(
-      `[ReservationRepository] Error obteniendo historial del vehículo "${vehicleId}": ${err.message}`
+      `[ReservationRepository] Error obteniendo historial del vehículo "${placa}": ${err.message}`
     );
   }
   }

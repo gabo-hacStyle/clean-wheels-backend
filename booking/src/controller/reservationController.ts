@@ -46,7 +46,7 @@ class ReservationController {
       this.getActiveReservationsByUser.bind(this)
     );
     this.router.get("/calendar/week", this.getWeeklyCalendar.bind(this));
-    this.router.get("/vehicle/:vehicleId", requireGatewayAuth, requireAdmin, this.getReservationsByVehicle.bind(this));
+    this.router.get("/vehicle/:placa", requireGatewayAuth, requireAdmin, this.getReservationsByVehicle.bind(this));
   }
 
   private async checkAvailability(req: Request, res: Response): Promise<void> {
@@ -358,11 +358,11 @@ class ReservationController {
   }
 
   private async getReservationsByVehicle(
-    req: Request<{ vehicleId: string }>,
+    req: Request<{ placa: string }>,
     res: Response
   ): Promise<void> {
     try {
-      const { vehicleId } = req.params;
+      const { placa } = req.params;
       const gatewayUser = req.gatewayUser!;
 
       if (gatewayUser.role !== UserRole.ADMIN) {
@@ -375,7 +375,7 @@ class ReservationController {
       }
 
       const reservations =
-        await this.service.getReservationsByVehicle(vehicleId);
+        await this.service.getReservationsByVehicle(placa);
 
       const response: ApiResponse<ReservationFormatted[]> = {
         success: true,
