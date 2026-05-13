@@ -47,7 +47,6 @@ class ReservationController {
     );
     this.router.get("/calendar/week", this.getWeeklyCalendar.bind(this));
     this.router.get("/vehicle/:vehicleId", requireGatewayAuth, requireAdmin, this.getReservationsByVehicle.bind(this));
-    this.router.get("/:userId/vehicles", requireGatewayAuth, this.getVehiclesByUser.bind(this));
   }
 
   private async checkAvailability(req: Request, res: Response): Promise<void> {
@@ -402,48 +401,7 @@ class ReservationController {
     }
   }
 
-  private async getVehiclesByUser(
-    req: Request<{ userId: string }>,
-    res: Response
-  ): Promise<void> {
-    try {
-      const { userId } = req.params;
-      const gatewayUser = req.gatewayUser!;
-
-      
-      if (
-        gatewayUser.role !== UserRole.ADMIN &&
-        gatewayUser.id !== userId
-      ) {
-        const response: ApiResponse<null> = {
-          success: false,
-          error: "No tienes permisos para ver los vehículos de otro usuario.",
-        };
-        res.status(403).json(response);
-        return;
-      }
-
-      const vehicles = await this.service.getVehiclesByUser(userId);
-
-      const response: ApiResponse<Vehicle[]> = {
-        success: true,
-        data: vehicles,
-        message:
-          vehicles.length > 0
-            ? `${vehicles.length} vehículo(s) encontrado(s).`
-            : "El usuario no tiene vehículos registrados.",
-      };
-
-      res.status(200).json(response);
-    } catch (error) {
-      const err = error as Error;
-      const response: ApiResponse<null> = {
-        success: false,
-        error: err.message,
-      };
-      res.status(500).json(response);
-    }
-  }
+  
 
 }
 

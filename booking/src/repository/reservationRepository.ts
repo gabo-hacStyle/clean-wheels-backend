@@ -612,23 +612,7 @@ class ReservationRepository {
   }
   }
 
-  async findVehiclesByUserId(userId: string): Promise<Vehicle[]> {
-    try {
-      const rows = await this.db.query<Vehicle>(
-        `SELECT v.id, v.placa, v.marca, v.modelo, v.created_at
-        FROM vehicles v
-        INNER JOIN vehicles_users vu ON vu.vehicle_id = v.id
-        WHERE vu.user_id = $1`,
-        [userId]
-      );
-      return rows;
-    } catch (error) {
-      const err = error as Error;
-      throw new Error(
-        `[ReservationRepository] Error obteniendo vehículos del usuario "${userId}": ${err.message}`
-      );
-    }
-  }
+
   public getMaxConcurrentReservations(): number {
     return ReservationRepository.MAX_CONCURRENT_RESERVATIONS;
   }
