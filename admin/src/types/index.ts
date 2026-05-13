@@ -30,7 +30,9 @@ export interface FeedbackItem {
 export interface IngressSummary {
     total_incomes: number;
     total_reservations: number;
-    details: IngressItem[];
+    from_date: Date;
+    to_date: Date;
+    //details: IngressItem[];
 }
 
 export interface IngressItem {
