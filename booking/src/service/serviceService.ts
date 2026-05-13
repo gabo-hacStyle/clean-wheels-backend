@@ -153,6 +153,27 @@ async deleteService(serviceId: string): Promise<void> {
     );
   }
 }
+
+async activateService(serviceId: string): Promise<WashService> {
+  try {
+    const existing = await this.repository.findById(serviceId);
+
+    if (!existing) {
+      throw new Error(`El servicio "${serviceId}" no existe.`);
+    }
+
+    if (existing.is_active) {
+      throw new Error(`El servicio "${serviceId}" ya está activo.`);
+    }
+
+    return await this.repository.activate(serviceId);
+  } catch (error) {
+    const err = error as Error;
+    throw new Error(
+      `[WashServiceService] Error al activar servicio: ${err.message}`
+    );
+  }
+}
 }
 
 export default WashServiceService;

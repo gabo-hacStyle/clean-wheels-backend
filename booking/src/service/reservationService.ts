@@ -23,7 +23,7 @@ import {
   WeeklyCalendarQuery,
 } from "../types";
 
-// Agregar al inicio de reservation.service.ts
+
 import { parseColombiaDT, assertNotPast, formatColombia, splitDatetimeColombia } from "../utils/date.utils";
 
 
@@ -642,20 +642,7 @@ async updateReservation(
       );
     }
   }
-  async getVehiclesByUser(userId: string): Promise<Vehicle[]> {
-    try {      if (!userId || userId.trim() === "") {
-        throw new Error("El userId es requerido.");
-      }
-      const vehicles = await this.repository.findVehiclesByUserId(userId);
-
-      return vehicles;
-    } catch (error) {
-      const err = error as Error;
-      throw new Error(
-        `[ReservationService] Error al obtener los vehículos del usuario: ${err.message}`
-      );
-    }
-  }
+  
 }
   
 

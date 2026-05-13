@@ -257,3 +257,9 @@ export interface ReservationFormatted
   time: string;
   services: Pick<WashService, "id" | "name" | "price" | "duration">[];
 }
+
+export interface SaveVehicleRequest {
+  placa: string;
+  marca: string;
+  modelo: string;
+}
