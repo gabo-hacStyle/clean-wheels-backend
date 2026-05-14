@@ -547,9 +547,9 @@ async updateReservation(
         );
       }
 
-      // Fin: domingo a las 18:00 (7 días, hasta las 18 inclusive)
+      // Fin: 5 días despues, hasta las 18 inclusive)
       const endDate = new Date(startDate);
-      endDate.setDate(endDate.getDate() + 7);
+      endDate.setDate(endDate.getDate() + 5);
 
       const occupancy = await this.repository.findSlotOccupancyByWeek(
         startDate,
