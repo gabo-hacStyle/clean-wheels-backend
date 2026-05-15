@@ -1,46 +1,45 @@
 {
-  "name": "auth",
+  "name": "api-gateway",
   "version": "0.1.0",
   "private": true,
+  "description": "",
+  "main": "dist/index.js",
   "scripts": {
     "build": "tsc && tsc-alias",
     "start": "node dist/index.js",
     "dev": "ts-node-dev --respawn --transpile-only -r tsconfig-paths/register src/index.ts",
-    "debug": "node --inspect=0.0.0.0:9229 dist/index.js",
     "lint": "eslint src/ --ext .ts",
     "lint:fix": "eslint src/ --ext .ts --fix",
     "format": "prettier --write src/**/*.ts",
-    "type-check": "tsc --noEmit"
-  },
-  "dependencies": {
-    "amqplib": "^1.0.3",
-    "cors": "^2.8.6",
-    "dotenv": "^17.4.2",
-    "express": "^5.2.1",
-    "google-auth-library": "^10.6.2",
-    "helmet": "^8.1.0",
-    "joi": "^18.1.2",
-    "jsonwebtoken": "^9.0.3",
-    "morgan": "^1.10.1",
-    "pg": "^8.20.0",
-    "uuid": "^14.0.0",
-    "winston": "^3.19.0"
+    "type-check": "tsc --noEmit",
+    "test": "echo \"Error: no test specified\" && exit 1"
   },
   "devDependencies": {
-    "@types/amqplib": "^0.10.8",
     "@types/cors": "^2.8.19",
-    "@types/express": "^5.0.6",
+    "@types/express": "^4.17.25",
+    "@types/http-proxy-middleware": "^0.19.3",
     "@types/jsonwebtoken": "^9.0.10",
     "@types/morgan": "^1.9.10",
     "@types/node": "^25.6.0",
-    "@types/pg": "^8.20.0",
-    "@types/uuid": "^10.0.0",
     "@typescript-eslint/eslint-plugin": "^8.59.0",
     "@typescript-eslint/parser": "^8.59.0",
     "eslint": "^10.2.1",
     "prettier": "^3.8.3",
     "ts-node-dev": "^2.0.0",
     "tsc-alias": "^1.8.16",
+    "tsconfig-paths": "^4.2.0",
     "typescript": "^6.0.3"
+  },
+  "dependencies": {
+    "cors": "^2.8.6",
+    "dotenv": "^17.4.2",
+    "express": "^4.22.1",
+    "express-rate-limit": "^8.3.2",
+    "helmet": "^8.1.0",
+    "http-proxy-middleware": "^3.0.5",
+    "joi": "^18.1.2",
+    "jsonwebtoken": "^9.0.3",
+    "morgan": "^1.10.1",
+    "winston": "^3.19.0"
   }
 }

@@ -1,0 +1,105 @@
+services:
+  api_gateway:
+    build: ./api-gateway
+    ports:
+      - "8080:8080"
+    
+    environment:
+      PORT: 8080
+      NODE_ENV: development
+      JWT_SECRET: ${JWT_SECRET}
+      AUTH_SERVICE_URL: http://auth-service:8090
+      ADMIN_SERVICE_URL: http://admin-service:9000
+      BOOKING_SERVICE_URL: http://booking-service:9010
+      NOTIFICATIONS_SERVICE_URL: http://notifications-service:9020
+      ALLOWED_ORIGINS: http://localhost:5173
+    depends_on:
+      - auth-service
+      - admin-service
+      - booking-service
+  
+
+  auth-service:
+    build: ./auth
+    ports:
+      - "8090:8090"
+    environment:
+      DB_URL: ${DB_URL}
+      PORT: 8090
+      NODE_ENV: development
+      ALLOWED_ORIGINS: http://localhost:5173
+      JWT_SECRET: ${JWT_SECRET}
+      JWT_EXPIRES_IN: 7d
+      GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID}
+      GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET}
+      GOOGLE_REDIRECT_URI: http://localhost:5173/google/callback
+      ADMIN_EMAILS: clean.wheels.project@gmail.com
+
+
+
+  admin-service:
+    build: ./admin
+    ports:
+      - "9000:9000"
+    environment:
+      PORT: 9000
+      DB_URL: ${DB_URL}
+    depends_on:
+      - postgres
+  
+
+  booking-service:
+    build: ./booking
+    ports:
+      - "9010:9010"
+    environment:
+      PORT: 9010
+      DB_URL: ${DB_URL}
+      NOTIFICATIONS_MS_URL: http://notifications-service:9020
+
+
+
+  notifications-service:
+    build: ./notification
+    ports:
+      - "9020:9020"
+    environment:
+      PORT: 9020
+      DB_URL: ${DB_URL}
+      MAIL_PASSWORD: ${MAIL_PASSWORD}
+      MAIL_USER: clean.wheels.project@gmail.com
+      RABBITMQ_URL: ${RABBITMQ_URL}
+    depends_on:
+      booking-service:
+        condition: service_started
+      rabbitmq:
+        condition: service_started
+  
+
+  rabbitmq:
+    image: rabbitmq:management
+    container_name: rabbitmq2
+    restart: always
+    environment:
+      RABBITMQ_DEFAULT_USER: cleanwheels
+      RABBITMQ_DEFAULT_PASS: 2020
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+
+  postgres:
+    image: postgres:14
+    container_name: postgres
+    restart: always
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+      POSTGRES_DB: cleanwheels
+    ports:
+      - "5433:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+
+volumes:
+  postgres_data:
