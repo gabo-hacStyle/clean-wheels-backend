@@ -642,6 +642,38 @@ async updateReservation(
       );
     }
   }
+
+  async getReservationsInProgress(): Promise<ReservationFormatted[]> {
+    try {
+      const reservations = await this.repository.findReservationsInProgress();
+
+      return reservations.map((r) => {
+        const { date, time } = splitDatetimeColombia(r.datetime);
+
+        const { datetime, created_at, updated_at, services, placa, ...rest } = r as any;
+
+        return {
+          ...rest,
+          placa: placa ? censorPlaca(placa) : null,
+          date,
+          time,
+          services: (services as WashService[]).map((s) => ({
+            id: s.id,
+            name: s.name,
+            price: s.price,
+            duration: s.duration,
+          })),
+        } as ReservationFormatted;
+      });
+    } catch (error) {
+      const err = error as Error;
+      throw new Error(
+        `[ReservationService] Error al obtener reservas en proceso: ${err.message}`
+      );
+    }
+  }
+
+  
   
 }
   

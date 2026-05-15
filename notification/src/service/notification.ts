@@ -1,4 +1,5 @@
 import NotificationRepository from "../repository/notificationRepository";
+import ReservationRepository from "../repository/reservationRepository";
 import Mailer from "../infraestructure/mailer";
 import {
   DailyReportRow,
@@ -8,15 +9,18 @@ import {
   NotificationStatus,
   NotificationType,
   ReservationDetail,
+  ReservationStatus,
   SubmitFeedbackBody,
 } from "../types";
 
 class NotificationService {
   private repository: NotificationRepository;
+  private reservationRepository: ReservationRepository;
   private mailer: Mailer;
 
   constructor() {
     this.repository = new NotificationRepository();
+    this.reservationRepository = new ReservationRepository();
     this.mailer = Mailer.getInstance();
   }
 
@@ -387,6 +391,55 @@ class NotificationService {
       const err = error as Error;
       throw new Error(
         `[NotificationService] Error en proceso de reintento: ${err.message}`
+      );
+    }
+  }
+
+  // ─── Cron: iniciar servicios de la hora actual ────────────────────────────
+
+  
+  async processServicesStartedCurrentHour(): Promise<void> {
+    try {
+      const reservations =
+        await this.reservationRepository.findReservationsByCurrentHour();
+
+      if (reservations.length === 0) {
+        console.log(
+          "[NotificationService] Sin reservas para iniciar en la hora actual."
+        );
+        return;
+      }
+
+      console.log(
+        `[NotificationService] Procesando ${reservations.length} servicio(s) iniciado(s)...`
+      );
+
+      for (const reservationId of reservations) {
+        try {
+          // Actualizar estado de la reserva a "en_proceso"
+          await this.reservationRepository.updateReservationStatus(
+            reservationId,
+            ReservationStatus.EN_PROCESO
+          );
+
+          // Enviar notificación al usuario
+          await this.sendServicioIniciado(reservationId);
+
+          console.log(
+            `[NotificationService] Reserva "${reservationId}" iniciada y usuario notificado.`
+          );
+        } catch (error) {
+          // Loguear pero continuar con los demás servicios
+          const err = error as Error;
+          console.error(
+            `[NotificationService] Error procesando servicio para reserva "${reservationId}": ${err.message}`
+          );
+        }
+      }
+    } catch (error) {
+      const err = error as Error;
+      throw new Error(
+        `[NotificationService] Error procesando servicios iniciados: ${err.message}`
       );
     }
   }
