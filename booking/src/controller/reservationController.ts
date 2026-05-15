@@ -47,6 +47,13 @@ class ReservationController {
     );
     this.router.get("/calendar/week", this.getWeeklyCalendar.bind(this));
     this.router.get("/vehicle/:placa", requireGatewayAuth, requireAdmin, this.getReservationsByVehicle.bind(this));
+    // Solo administrador: obtener reservas en proceso (servicio)
+    this.router.get(
+      "/in-progress",
+      requireGatewayAuth,
+      requireAdmin,
+      this.getReservationsInProgress.bind(this)
+    );
   }
 
   private async checkAvailability(req: Request, res: Response): Promise<void> {
@@ -401,6 +408,34 @@ class ReservationController {
     }
   }
 
+  private async getReservationsInProgress(
+    _req: Request,
+    res: Response
+  ): Promise<void> {
+    try {
+      const reservations = await this.service.getReservationsInProgress();
+
+      const response: ApiResponse<ReservationFormatted[]> = {
+        success: true,
+        data: reservations,
+        message:
+          reservations.length > 0
+            ? `${reservations.length} reserva(s) en proceso encontrada(s).`
+            : "No hay reservas en proceso.",
+      };
+
+      res.status(200).json(response);
+    } catch (error) {
+      const err = error as Error;
+      const response: ApiResponse<null> = {
+        success: false,
+        error: err.message,
+      };
+      res.status(500).json(response);
+    }
+  }
+
+  
   
 
 }
