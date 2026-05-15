@@ -228,6 +228,60 @@ class ReservationRepository {
     }
   }
 
+  async findReservationsInProgress(): Promise<ReservationWithServices[]> {
+    try {
+      const rows = await this.db.query<Reservation & {
+          placa: string;
+          marca: string;
+          modelo: string;
+          service_names: string;
+        }>(
+        `SELECT
+          r.id,
+          r.vehicle_id,
+          r.datetime,
+          r.status,
+          r.total_price,
+          r.total_duration,
+          r.created_at,
+          r.updated_at,
+          v.placa,
+          v.marca,
+          v.modelo,
+          STRING_AGG(s.name, ', ' ORDER BY s.name) AS service_names
+        FROM reservations r
+        INNER JOIN vehicles v ON v.id = r.vehicle_id
+        INNER JOIN reservations_services rs ON rs.reservation_id = r.id
+        INNER JOIN services s ON s.id = rs.service_id
+        WHERE r.status = 'en_proceso'
+        GROUP BY r.id, v.placa, v.marca, v.modelo
+        ORDER BY r.datetime ASC`
+      );
+
+      return rows.map((row) => ({
+        id: row.id,
+        vehicle_id: row.vehicle_id,
+        datetime: row.datetime,
+        status: row.status,
+        total_price: row.total_price,
+        total_duration: row.total_duration,
+        created_at: row.created_at,
+        updated_at: row.updated_at,
+        placa: row.placa,
+        marca: row.marca,
+        modelo: row.modelo,
+        services: row.service_names
+          ? row.service_names.split(', ').map((name) => ({ name } as any))
+          : [],
+      }));
+    } catch (error) {
+      const err = error as Error;
+      throw new Error(
+        `[ReservationRepository] Error obteniendo reservas en proceso: ${err.message}`
+      );
+    }
+  }
+
   // Verifica si el usuario es propietario de alguno de los vehículos de la reserva
   async isUserVehicleOwner(
     userId: string,
@@ -613,6 +667,8 @@ class ReservationRepository {
     );
   }
   }
+
+  
 
 
   public getMaxConcurrentReservations(): number {

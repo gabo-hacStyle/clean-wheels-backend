@@ -60,6 +60,23 @@ class NotificationScheduler {
         { timezone: "America/Bogota" }
       );
 
+      // Servicios iniciados — cada hora de lunes a viernes, 6 AM a 6 PM (hora Colombia)
+      cron.schedule(
+        "0 6-18 * * 1-5",
+        async () => {
+          console.log("[Scheduler] Ejecutando procesamiento de servicios iniciados...");
+          try {
+            await this.service.processServicesStartedCurrentHour();
+          } catch (error) {
+            const err = error as Error;
+            console.error(
+              `[Scheduler] Error en job de servicios iniciados: ${err.message}`
+            );
+          }
+        },
+        { timezone: "America/Bogota" }
+      );
+
       console.log("[Scheduler] Todos los cron jobs iniciados correctamente.");
     } catch (error) {
       const err = error as Error;
