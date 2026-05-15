@@ -534,6 +534,8 @@ class ReservationRepository {
       );
     }
 
+    const vehicleId = vehicle[0].id;
+
     const rows = await this.db.query<
       Reservation & {
         placa: string;
@@ -568,7 +570,7 @@ class ReservationRepository {
        WHERE r.vehicle_id = $1
        GROUP BY r.id, v.placa, v.marca, v.modelo
        ORDER BY r.datetime DESC`,
-      [placa]
+      [vehicleId]
     );
 
     return rows.map((row) => {
