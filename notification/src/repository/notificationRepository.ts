@@ -261,7 +261,7 @@ class NotificationRepository {
   async findAdminEmails(): Promise<string[]> {
     try {
       const rows = await this.db.query<{ email: string }>(
-        `SELECT email FROM users WHERE rol = 'admin'`
+        `SELECT email FROM users WHERE rol = 'ADMIN'`
       );
       return rows.map((r) => r.email);
     } catch (error) {
