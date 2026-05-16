@@ -549,7 +549,7 @@ async updateReservation(
 
       // Fin: 5 días despues, hasta las 18 inclusive)
       const endDate = new Date(startDate);
-      endDate.setDate(endDate.getDate() + 5);
+      endDate.setDate(endDate.getDate() + 6);
 
       const occupancy = await this.repository.findSlotOccupancyByWeek(
         startDate,

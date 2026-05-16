@@ -27,9 +27,9 @@ class NotificationScheduler {
         { timezone: "America/Bogota" }
       );
 
-      // Reporte diario para admin — todos los días a las 6:00 AM
+      // Reporte diario para admin — todos los días a las 6:00 AM, 10:00 AM, 11:00 AM y 9:00 PM
       cron.schedule(
-        "0 6 * * *",
+        "0 6,10,11,12 * * *",
         async () => {
           console.log("[Scheduler] Ejecutando reporte diario...");
           try {
@@ -60,9 +60,9 @@ class NotificationScheduler {
         { timezone: "America/Bogota" }
       );
 
-      // Servicios iniciados — cada hora de lunes a viernes, 6 AM a 6 PM (hora Colombia)
+      // Servicios iniciados — cada hora de lunes a sabado, 6 AM a 6 PM (hora Colombia)
       cron.schedule(
-        "0 6-18 * * 1-5",
+        "0 6-18 * * 1-6",
         async () => {
           console.log("[Scheduler] Ejecutando procesamiento de servicios iniciados...");
           try {
