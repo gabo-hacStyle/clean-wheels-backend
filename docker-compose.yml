@@ -50,6 +50,8 @@ services:
       GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET}
       GOOGLE_REDIRECT_URI: http://localhost:5173/google/callback
       ADMIN_EMAILS: clean.wheels.project@gmail.com
+    networks:
+      - backend
 
   admin-service:
     build: ./admin
@@ -63,6 +65,8 @@ services:
       ALLOWED_ORIGINS: http://localhost:5173
     depends_on:
       - postgres
+    networks:
+      - backend
   
 
   booking-service:
@@ -74,6 +78,8 @@ services:
       PORT: 9010
       DB_URL: ${DB_URL}
       NOTIFICATIONS_MS_URL: http://notifications-service:9020
+    networks:
+      - backend
 
 
 
@@ -93,6 +99,8 @@ services:
         condition: service_started
       rabbitmq:
         condition: service_started
+    networks:
+      - backend
   
 
   rabbitmq:
@@ -105,6 +113,8 @@ services:
     expose:
       - "5672"
       - "15672"
+    networks:
+      - backend
 
   postgres:
     image: postgres:14
@@ -118,6 +128,8 @@ services:
       - "5433:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
+    networks:
+      - backend
 
 networks:
   backend:
