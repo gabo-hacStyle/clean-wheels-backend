@@ -9,6 +9,8 @@ services:
       - api_gateway
     networks:
       - backend
+    volumes:
+      - ./nginx/conf.d:/etc/nginx/conf.d
 
   api_gateway:
     build: ./api-gateway
