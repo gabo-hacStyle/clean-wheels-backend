@@ -1,9 +1,22 @@
 services:
+  nginx:
+    image: nginx:latest
+    ports:
+      - "80:80"
+      - "443:443"
+    restart: unless-stopped
+    depends_on:
+      - api_gateway
+    networks:
+      - backend
+    volumes:
+      - ./nginx/conf.d:/etc/nginx/conf.d
+
   api_gateway:
     build: ./api-gateway
-    ports:
-      - "8080:8080"
-
+    expose:
+      - "8080"
+    restart: unless-stopped
     environment:
       PORT: 8080
       NODE_ENV: development
@@ -17,12 +30,15 @@ services:
       - auth-service
       - admin-service
       - booking-service
+    networks:
+      - backend
 
 
   auth-service:
     build: ./auth
-    ports:
-      - "8090:8090"
+    expose:
+      - "8090"
+    restart: unless-stopped
     environment:
       DB_URL: ${DB_URL}
       PORT: 8090
@@ -34,35 +50,44 @@ services:
       GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET}
       GOOGLE_REDIRECT_URI: http://localhost:5173/google/callback
       ADMIN_EMAILS: clean.wheels.project@gmail.com
-
-
+    networks:
+      - backend
 
   admin-service:
     build: ./admin
-    ports:
-      - "9000:9000"
+    expose:
+      - "9000"
+    restart: unless-stopped
     environment:
       PORT: 9000
+      NODE_ENV: development
       DB_URL: ${DB_URL}
+      ALLOWED_ORIGINS: http://localhost:5173
     depends_on:
       - postgres
+    networks:
+      - backend
 
 
   booking-service:
     build: ./booking
     ports:
       - "9010:9010"
+    restart: unless-stopped
     environment:
       PORT: 9010
       DB_URL: ${DB_URL}
       NOTIFICATIONS_MS_URL: http://notifications-service:9020
+    networks:
+      - backend
 
 
 
   notifications-service:
     build: ./notification
-    ports:
-      - "9020:9020"
+    expose:
+      - "9020"
+    restart: unless-stopped
     environment:
       PORT: 9020
       DB_URL: ${DB_URL}
@@ -74,6 +99,8 @@ services:
         condition: service_started
       rabbitmq:
         condition: service_started
+    networks:
+      - backend
 
 
   rabbitmq:
@@ -83,9 +110,11 @@ services:
     environment:
       RABBITMQ_DEFAULT_USER: cleanwheels
       RABBITMQ_DEFAULT_PASS: 2020
-    ports:
-      - "5672:5672"
-      - "15672:15672"
+    expose:
+      - "5672"
+      - "15672"
+    networks:
+      - backend
 
   postgres:
     image: postgres:14
@@ -99,7 +128,12 @@ services:
       - "5433:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
+    networks:
+      - backend
 
+networks:
+  backend:
+    driver: bridge
 
 volumes:
   postgres_data:
