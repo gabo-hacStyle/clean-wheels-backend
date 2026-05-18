@@ -6,7 +6,8 @@ services:
       - "443:443"
     restart: unless-stopped
     depends_on:
-      - api_gateway
+      api_gateway:
+        condition: service_healthy
     networks:
       - backend
     volumes:
