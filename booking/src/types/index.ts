@@ -263,3 +263,18 @@ export interface SaveVehicleRequest {
   marca: string;
   modelo: string;
 }
+
+
+export interface Feedback {
+  id: string;
+  reservation_id: string;
+  rating: number;
+  feedback: string;
+  created_at: Date;
+  updated_at: Date;
+}
+
+export interface SaveFeedbackBody {
+  rating: number;   // 1 - 5
+  feedback: string; // máximo 500 caracteres
+}
