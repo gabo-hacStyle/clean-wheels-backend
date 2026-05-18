@@ -312,6 +312,64 @@ class ReservationService {
     }
   }
 
+  async reactivateReservation(
+    reservationId: string,
+    user: GatewayUser
+  ): Promise<Reservation> {
+    try {
+      const reservation = await this.repository.findReservationById(reservationId);
+
+      if (!reservation) {
+        throw new Error(
+          `La reserva con id "${reservationId}" no existe.`
+        );
+      }
+
+      // Solo las reservas canceladas pueden reactivarse
+      if (reservation.status !== ReservationStatus.CANCELADA) {
+        throw new Error(
+          `La reserva no puede reactivarse porque su estado actual es "${reservation.status}". Solo las reservas canceladas pueden reactivarse.`
+        );
+      }
+
+      // Verificar permisos (dueño del vehículo o admin)
+      await this.assertUserCanModify(user, reservation);
+
+      // Validar que no esté en el pasado
+      const now = new Date();
+      const reservationDateTime = new Date(reservation.datetime);
+      if (reservationDateTime <= now) {
+        throw new Error(
+          `La reserva no puede reactivarse porque su fecha y hora ya ha pasado.`
+        );
+      }
+
+      // Validar disponibilidad de cupos
+      const end = new Date(
+        reservationDateTime.getTime() + reservation.total_duration * 60 * 1000
+      );
+      const maxSlots = this.repository.getMaxConcurrentReservations();
+      // No excluir la reserva porque está cancelada
+      const overlapping = await this.repository.countOverlappingReservations(
+        reservationDateTime,
+        end
+      );
+
+      if (overlapping >= maxSlots) {
+        throw new Error(
+          `No hay cupo disponible para reactivar la reserva. Los ${maxSlots} cupos están ocupados en ese horario.`
+        );
+      }
+
+      return await this.repository.reactivateReservation(reservationId);
+    } catch (error) {
+      const err = error as Error;
+      throw new Error(
+        `[ReservationService] Error al reactivar la reserva: ${err.message}`
+      );
+    }
+  }
+
 async updateReservation(
   reservationId: string,
   body: UpdateReservationBody,
