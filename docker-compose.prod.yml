@@ -10,8 +10,18 @@ services:
         condition: service_healthy
     networks:
       - backend
+    environment:
+      DOMAIN: ${SERVER_DOMAIN}
     volumes:
-      - ./nginx/conf.d:/etc/nginx/conf.d
+      - ./nginx/templates:/etc/nginx/templates
+      - ./certbot/conf:/etc/letsencrypt
+      - ./certbot/www:/var/www/certbot
+
+  certbot:
+    image: cerbot/certbot
+    volumes:
+      - ./certbot/conf:/etc/letsencrypt
+      - ./certbot/www:/var/www/certbot
 
   api_gateway:
     build: ./api-gateway
