@@ -85,7 +85,16 @@ services:
     depends_on:
       - postgres
     healthcheck:
-      test: [ "CMD", "wget", "--spider", "-q", "--header=x-user-id: USUARIO", "--header= x-role-id=ADMIN","http://localhost:9000/health" ]
+      test:
+        [
+          "CMD",
+          "wget",
+          "--spider",
+          "-q",
+          "--header=x-user-id:USUARIO",
+          "--header=x-role-id:ADMIN",
+          "http://localhost:9000/health"
+        ]
       interval: 30s
       timeout: 10s
       retries: 5
