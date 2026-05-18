@@ -24,6 +24,6 @@ declare global {
 }
 
 export const attachUser = (req: Request, _res: Response, next: NextFunction):void => {
-    req.adminUserId = req.headers['X-User-Id'] as string | undefined;
+    req.adminUserId = req.headers['x-user-id'] as string | undefined;
     next();
 };

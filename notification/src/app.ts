@@ -29,6 +29,9 @@ class App {
   private setRoutes(): void {
     const notificationController = new NotificationController();
     this.app.use("/notifications", notificationController.router);
+    this.app.get('/health', (_req, res) => {
+      res.json({ status: 'ok', service: 'api-gateway' });
+    });
   }
 
   private setErrorHandler(): void {
