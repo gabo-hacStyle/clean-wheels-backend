@@ -11,6 +11,8 @@ services:
       - backend
     volumes:
       - ./nginx/conf.d:/etc/nginx/conf.d
+    profiles:
+      - production
 
   api_gateway:
     build: ./api-gateway
@@ -28,11 +30,11 @@ services:
       ALLOWED_ORIGINS: http://localhost:5173
     depends_on:
       auth-service:
-        - condition: service_healthy
+        condition: service_healthy
       admin-service:
-        - condition: service_healthy
+        condition: service_healthy
       booking-service:
-        - condition: service_healthy
+        condition: service_healthy
     networks:
       - backend
     healthcheck:
@@ -40,6 +42,8 @@ services:
       interval: 30s
       timeout: 10s
       retries: 5
+    profiles:
+      - production
 
 
   auth-service:
@@ -58,13 +62,15 @@ services:
       GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET}
       GOOGLE_REDIRECT_URI: http://localhost:5173/google/callback
       ADMIN_EMAILS: clean.wheels.project@gmail.com
+    networks:
+      - backend
     healthcheck:
       test: [ "CMD", "wget", "--spider", "-q", "http://localhost:8090/health" ]
       interval: 30s
       timeout: 10s
       retries: 5
-    networks:
-      - backend
+    profiles:
+      - production
 
   admin-service:
     build: ./admin
@@ -79,10 +85,12 @@ services:
     depends_on:
       - postgres
     healthcheck:
-      test: [ "CMD", "wget", "--spider", "-q", "http://localhost:8080/health" ]
+      test: [ "CMD", "wget", "--spider", "-q", "--header=x-user-id: USUARIO", "--header= x-role-id=ADMIN","http://localhost:9000/health" ]
       interval: 30s
       timeout: 10s
       retries: 5
+    profiles:
+      - production
     networks:
       - backend
 
@@ -98,8 +106,13 @@ services:
       NOTIFICATIONS_MS_URL: http://notifications-service:9020
     networks:
       - backend
-
-
+    healthcheck:
+      test: [ "CMD", "wget", "--spider", "-q", "http://localhost:9010/system/health" ]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+    profiles:
+      - production
 
   notifications-service:
     build: ./notification
@@ -119,6 +132,13 @@ services:
         condition: service_started
     networks:
       - backend
+    healthcheck:
+      test: [ "CMD", "wget", "--spider", "-q", "http://localhost:9020/health" ]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+    profiles:
+      - production
 
 
   rabbitmq:
