@@ -33,7 +33,7 @@ services:
       GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID}
       GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET}
       GOOGLE_REDIRECT_URI: http://localhost:5173/google/callback
-      ADMIN_EMAILS: clean.wheels.project@gmail.com
+      ADMIN_EMAILS: cleanwheelsneiva@gmail.com
 
 
 
@@ -67,7 +67,7 @@ services:
       PORT: 9020
       DB_URL: ${DB_URL}
       MAIL_PASSWORD: ${MAIL_PASSWORD}
-      MAIL_USER: clean.wheels.project@gmail.com
+      MAIL_USER: cleanwheelsneiva@gmail.com
       RABBITMQ_URL: ${RABBITMQ_URL}
     depends_on:
       booking-service:
