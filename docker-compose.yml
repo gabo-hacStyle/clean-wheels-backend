@@ -27,12 +27,12 @@ services:
       DB_URL: ${DB_URL}
       PORT: 8090
       NODE_ENV: development
-      ALLOWED_ORIGINS: http://localhost:5173
+      ALLOWED_ORIGINS: http://127.0.0.1:5173
       JWT_SECRET: ${JWT_SECRET}
       JWT_EXPIRES_IN: 7d
       GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID}
       GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET}
-      GOOGLE_REDIRECT_URI: http://localhost:5173/google/callback
+      GOOGLE_REDIRECT_URI: http://127.0.0.1:5173/google/callback
       ADMIN_EMAILS: cleanwheelsneiva@gmail.com
 
 
