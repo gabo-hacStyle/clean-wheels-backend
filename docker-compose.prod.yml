@@ -11,8 +11,6 @@ services:
       - backend
     volumes:
       - ./nginx/conf.d:/etc/nginx/conf.d
-    profiles:
-      - production
 
   api_gateway:
     build: ./api-gateway
@@ -42,8 +40,6 @@ services:
       interval: 30s
       timeout: 10s
       retries: 5
-    profiles:
-      - production
 
 
   auth-service:
@@ -69,8 +65,6 @@ services:
       interval: 30s
       timeout: 10s
       retries: 5
-    profiles:
-      - production
 
   admin-service:
     build: ./admin
@@ -120,8 +114,6 @@ services:
       interval: 30s
       timeout: 10s
       retries: 5
-    profiles:
-      - production
 
   notifications-service:
     build: ./notification
@@ -146,8 +138,6 @@ services:
       interval: 30s
       timeout: 10s
       retries: 5
-    profiles:
-      - production
 
 
   rabbitmq:
