@@ -100,6 +100,21 @@ async linkVehicleToUser(
     );
   }
 }
+
+  async findAllVehicles(): Promise<Vehicle[]> {
+    try {
+      const rows = await this.db.query<Vehicle>(
+        `SELECT id, placa, marca, modelo, created_at, updated_at
+         FROM vehicles`
+      );
+      return rows;
+    } catch (error) {
+      const err = error as Error;
+      throw new Error(
+        `[VehicleRepository] Error obteniendo todos los vehículos: ${err.message}`
+      );
+    }
+  }
 }
 
 export default VehicleRepository;

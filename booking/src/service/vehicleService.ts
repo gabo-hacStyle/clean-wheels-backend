@@ -1,7 +1,8 @@
-import ReservationRepository from "../repository/reservationRepository";
-import NotificationClient from "../infraestructure/email.client";
-import { NotificationType, ReservationFormatted, SaveVehicleRequest, Vehicle} from "../types";
+
+import { SaveVehicleRequest, Vehicle} from "../types";
 import VehicleRepository from "../repository/vehicleRepository";
+import { censorPlaca } from "./reservationService";
+
 
 class VehicleService {
     
@@ -17,7 +18,10 @@ class VehicleService {
       }
       const vehicles = await this.repository.findVehiclesByUserId(userId);
 
-      return vehicles;
+        return vehicles.map((vehicle) => ({
+          ...vehicle,
+          placa: censorPlaca(vehicle.placa),
+        }));
     } catch (error) {
       const err = error as Error;
       throw new Error(
@@ -82,7 +86,23 @@ class VehicleService {
       `[VehicleService] Error al registrar vehículo: ${err.message}`
     );
   }
-}
+  }
+
+  async getAllVehicles(): Promise<Vehicle[]> {
+    try {
+      const vehicles = await this.repository.findAllVehicles();
+
+      return vehicles.map((vehicle) => ({
+        ...vehicle,
+        placa: censorPlaca(vehicle.placa),
+      }));
+    } catch (error) {
+      const err = error as Error;
+      throw new Error(
+        `[VehicleService] Error al obtener todos los vehículos: ${err.message}`
+      );
+    }
+  }
 }
 
 export default VehicleService;

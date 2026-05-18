@@ -6,6 +6,7 @@ import ServiceController from "./controller/serviceController";
 import CategoryController from "./controller/categoryController";
 import SystemController from "./controller/systemController";
 import VehicleController from "./controller/vehicle.controller"
+import FeedbackController from "./controller/feedbackController";
 
 class App {
   public app: Application;
@@ -29,12 +30,13 @@ class App {
     const serviceController = new ServiceController();
     const systemController = new SystemController();
     const vehicleController = new VehicleController();
+    const categoryController = new CategoryController();
+    const feedbackController = new FeedbackController();
     this.app.use("/system", systemController.router);
     this.app.use("/reservations", reservationController.router);
     this.app.use("/services", serviceController.router);
     this.app.use("/vehicles", vehicleController.router)
-
-    const categoryController = new CategoryController();
+    this.app.use("/feedback", feedbackController.router); 
     this.app.use("/categories", categoryController.router);
   }
 
