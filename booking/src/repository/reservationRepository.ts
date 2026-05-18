@@ -327,6 +327,31 @@ class ReservationRepository {
     }
   }
 
+  async reactivateReservation(reservationId: string): Promise<Reservation> {
+    try {
+      const rows = await this.db.query<Reservation>(
+        `UPDATE reservations
+        SET status = 'pendiente', updated_at = NOW()
+        WHERE id = $1
+        RETURNING *`,
+        [reservationId]
+      );
+
+      if (rows.length === 0) {
+        throw new Error(
+          `No se encontró la reserva con id "${reservationId}" para reactivar.`
+        );
+      }
+
+      return rows[0];
+    } catch (error) {
+      const err = error as Error;
+      throw new Error(
+        `[ReservationRepository] Error reactivando reserva: ${err.message}`
+      );
+    }
+  }
+
   async updateReservation(
     reservationId: string,
     datetime: Date,
