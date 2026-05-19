@@ -4,15 +4,24 @@ services:
     ports:
       - "80:80"
       - "443:443"
-    restart: unless-stopped
+    restart: always
     depends_on:
-      - api_gateway
+      api_gateway:
+        condition: service_healthy
     networks:
       - backend
+    environment:
+      DOMAIN: ${SERVER_DOMAIN}
     volumes:
-      - ./nginx/conf.d:/etc/nginx/conf.d
-    profiles:
-      - production
+      - ./nginx/templates:/etc/nginx/templates
+      - ./certbot/conf:/etc/letsencrypt
+      - ./certbot/www:/var/www/certbot
+
+  certbot:
+    image: certbot/certbot
+    volumes:
+      - ./certbot/conf:/etc/letsencrypt
+      - ./certbot/www:/var/www/certbot
 
   api_gateway:
     build: ./api-gateway
@@ -42,8 +51,6 @@ services:
       interval: 30s
       timeout: 10s
       retries: 5
-    profiles:
-      - production
 
 
   auth-service:
@@ -69,8 +76,6 @@ services:
       interval: 30s
       timeout: 10s
       retries: 5
-    profiles:
-      - production
 
   admin-service:
     build: ./admin
@@ -85,12 +90,19 @@ services:
     depends_on:
       - postgres
     healthcheck:
-      test: [ "CMD", "wget", "--spider", "-q", "--header=x-user-id: USUARIO", "--header= x-role-id=ADMIN","http://localhost:9000/health" ]
+      test:
+        [
+          "CMD",
+          "wget",
+          "--spider",
+          "-q",
+          "--header=x-user-id:USUARIO",
+          "--header=x-role-id:ADMIN",
+          "http://localhost:9000/health"
+        ]
       interval: 30s
       timeout: 10s
       retries: 5
-    profiles:
-      - production
     networks:
       - backend
 
@@ -111,8 +123,6 @@ services:
       interval: 30s
       timeout: 10s
       retries: 5
-    profiles:
-      - production
 
   notifications-service:
     build: ./notification
@@ -137,8 +147,6 @@ services:
       interval: 30s
       timeout: 10s
       retries: 5
-    profiles:
-      - production
 
 
   rabbitmq:

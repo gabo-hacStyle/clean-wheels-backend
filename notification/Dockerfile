@@ -19,7 +19,7 @@ RUN npm ci
 FROM deps AS builder
 
 COPY tsconfig*.json ./
-COPY bin ./bin
+COPY src/bin ./bin
 COPY src ./src
 
 RUN npm run build
