@@ -114,7 +114,8 @@ class NotificationRepository {
            v.placa,
            v.marca,
            v.modelo,
-           STRING_AGG(s.name, ', ' ORDER BY s.name) AS service_names
+           STRING_AGG(s.name, ', ' ORDER BY s.name) AS service_names,
+            r.total_price
          FROM reservations r
          INNER JOIN vehicles v              ON v.id = r.vehicle_id
          INNER JOIN reservations_services rs ON rs.reservation_id = r.id
