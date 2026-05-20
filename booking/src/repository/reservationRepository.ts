@@ -481,8 +481,8 @@ class ReservationRepository {
     }
   }
 
-  // Reservas activas de todos los vehículos de un usuario
-  async findActiveReservationsByUserId(
+  // Reservas de todos los vehículos de un usuario
+  async findReservationsByUserId(
     userId: string
   ): Promise<ReservationWithServices[]> {
     try {
@@ -515,7 +515,6 @@ class ReservationRepository {
         INNER JOIN reservations_services rs ON rs.reservation_id = r.id
         INNER JOIN services s              ON s.id = rs.service_id
         WHERE vu.user_id = $1
-          AND r.status IN ('pendiente', 'confirmada', 'en_proceso')
         GROUP BY r.id, v.placa, v.marca, v.modelo
         ORDER BY r.datetime ASC`,
         [userId]
@@ -544,7 +543,7 @@ class ReservationRepository {
     } catch (error) {
       const err = error as Error;
       throw new Error(
-        `[ReservationRepository] Error obteniendo reservas activas del usuario "${userId}": ${err.message}`
+        `[ReservationRepository] Error obteniendo reservas del usuario "${userId}": ${err.message}`
       );
     }
   }

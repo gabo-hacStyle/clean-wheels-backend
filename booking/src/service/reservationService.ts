@@ -89,80 +89,114 @@ class ReservationService {
     }
   }
 
-  
+  // Método privado con lógica común de creación de reserva
+  private async performReservationCreation(
+    vehicleId: string,
+    date: string,
+    time: string,
+    serviceIds: string[]
+  ): Promise<ReservationWithServices> {
+    // Validaciones
+    if (!date || !time) {
+      throw new Error("Los campos date y time son requeridos.");
+    }
+
+    if (!serviceIds || serviceIds.length === 0) {
+      throw new Error("Debe seleccionar al menos un servicio.");
+    }
+
+    const vehicleExists = await this.repository.findVehicleById(vehicleId);
+    if (!vehicleExists) {
+      throw new Error(
+        `El vehículo con id "${vehicleId}" no existe en el sistema.`
+      );
+    }
+
+    const foundServices: WashService[] =
+      await this.repository.findServicesByIds(serviceIds);
+
+    if (foundServices.length !== serviceIds.length) {
+      const foundIds = foundServices.map((s) => s.id);
+      const invalidIds = serviceIds.filter((id) => !foundIds.includes(id));
+      throw new Error(
+        `Los siguientes servicios no existen o no están disponibles: ${invalidIds.join(", ")}`
+      );
+    }
+
+    // Normalizar hora Colombia → UTC
+    const start = parseColombiaDT(date, time);
+
+    // Validar que no sea en el pasado
+    assertNotPast(start, `El horario "${date} ${time}" (hora Colombia)`);
+
+    const totalDuration = foundServices.reduce(
+      (sum, s) => sum + Number(s.duration),
+      0
+    );
+    const end = new Date(start.getTime() + totalDuration * 60 * 1000);
+
+    const maxSlots = this.repository.getMaxConcurrentReservations();
+    const overlapping = await this.repository.countOverlappingReservations(
+      start,
+      end
+    );
+
+    if (overlapping >= maxSlots) {
+      throw new Error(
+        `El horario del ${date} a las ${time} (hora Colombia) no está disponible. Los ${maxSlots} cupos están ocupados durante ese período.`
+      );
+    }
+
+    const reservation = await this.repository.createReservationWithServices(
+      vehicleId,
+      start,  // se guarda en UTC en PostgreSQL
+      foundServices
+    );
+
+    await this.notificationClient.trigger(
+      reservation.id,
+      NotificationType.RESERVA_CREADA
+    );
+
+    return reservation;
+  }
+
 
   async createReservation(
     body: CreateReservationBody
   ): Promise<ReservationWithServices> {
     try {
       const { vehicle_id, date, time, service_ids } = body;
-
-      if (!date || !time) {
-        throw new Error("Los campos date y time son requeridos.");
-      }
-
-      if (!service_ids || service_ids.length === 0) {
-        throw new Error("Debe seleccionar al menos un servicio.");
-      }
-
-      const vehicleExists = await this.repository.findVehicleById(vehicle_id);
-      if (!vehicleExists) {
-        throw new Error(
-          `El vehículo con id "${vehicle_id}" no existe en el sistema.`
-        );
-      }
-
-      const foundServices: WashService[] =
-        await this.repository.findServicesByIds(service_ids);
-
-      if (foundServices.length !== service_ids.length) {
-        const foundIds = foundServices.map((s) => s.id);
-        const invalidIds = service_ids.filter((id) => !foundIds.includes(id));
-        throw new Error(
-          `Los siguientes servicios no existen o no están disponibles: ${invalidIds.join(", ")}`
-        );
-      }
-
-      // Normalizar hora Colombia → UTC
-      const start = parseColombiaDT(date, time);
-
-      // Validar que no sea en el pasado
-      assertNotPast(start, `El horario "${date} ${time}" (hora Colombia)`);
-
-      const totalDuration = foundServices.reduce(
-        (sum, s) => sum + Number(s.duration),
-        0
-      );
-      const end = new Date(start.getTime() + totalDuration * 60 * 1000);
-
-      const maxSlots = this.repository.getMaxConcurrentReservations();
-      const overlapping = await this.repository.countOverlappingReservations(
-        start,
-        end
-      );
-
-      if (overlapping >= maxSlots) {
-        throw new Error(
-          `El horario del ${date} a las ${time} (hora Colombia) no está disponible. Los ${maxSlots} cupos están ocupados durante ese período.`
-        );
-      }
-
-      const reservation = await this.repository.createReservationWithServices(
-        vehicle_id,
-        start,  // se guarda en UTC en PostgreSQL
-        foundServices
-      );
-
-      await this.notificationClient.trigger(
-        reservation.id,
-        NotificationType.RESERVA_CREADA
-      );
-
-      return reservation;
+      return await this.performReservationCreation(vehicle_id, date, time, service_ids);
     } catch (error) {
       const err = error as Error;
       throw new Error(
         `[ReservationService] Error al crear la reserva: ${err.message}`
+      );
+    }
+  }
+
+  async createReservationFromAdmin(
+    body: CreateReservationBody
+  ): Promise<ReservationWithServices> {
+    try {
+      const { vehicle_id, date, time, service_ids } = body;
+
+      // Validar que existe un usuario asociado al vehículo
+      const primaryUserId = await this.repository.findPrimaryUserByVehicle(
+        vehicle_id
+      );
+      if (!primaryUserId) {
+        throw new Error(
+          `No se encontró un usuario asociado al vehículo con id "${vehicle_id}".`
+        );
+      }
+
+      return await this.performReservationCreation(vehicle_id, date, time, service_ids);
+    } catch (error) {
+      const err = error as Error;
+      throw new Error(
+        `[ReservationService] Error al crear la reserva desde admin: ${err.message}`
       );
     }
   }
@@ -557,7 +591,7 @@ async updateReservation(
   }
 }
 
-  async getActiveReservationsByUser(
+  async getReservationsByUser(
     userId: string
   ): Promise<ReservationFormatted[]> {
     try {
@@ -565,7 +599,7 @@ async updateReservation(
         throw new Error("El user_id es requerido.");
       }
 
-      const reservations = await this.repository.findActiveReservationsByUserId(userId);
+      const reservations = await this.repository.findReservationsByUserId(userId);
 
       return reservations.map((r) => {
         const { date, time } = splitDatetimeColombia(r.datetime);
