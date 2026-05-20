@@ -113,7 +113,7 @@ class ReservationController {
         return;
       }
       if(role === UserRole.ADMIN) {
-        //debemos crear otro servicio, donde el admin pueda crear reservas para otros usuarios, por ahora se asume que el admin solo crea reservas para sí mismo
+        await this.service.createReservationFromAdmin(body);
       }
 
       const reservation: ReservationWithServices =
@@ -356,15 +356,15 @@ class ReservationController {
         return;
       }
 
-      const reservations = await this.service.getActiveReservationsByUser(userId);
+      const reservations = await this.service.getReservationsByUser(userId);
 
       const response: ApiResponse<ReservationFormatted[]> = {
         success: true,
         data: reservations,
         message:
           reservations.length > 0
-            ? `${reservations.length} reserva(s) activa(s) encontrada(s).`
-            : "El usuario no tiene reservas activas.",
+            ? `${reservations.length} reserva(s) encontrada(s).`
+            : "El usuario no tiene reservas.",
       };
 
       res.status(200).json(response);
