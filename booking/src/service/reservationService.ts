@@ -1,6 +1,6 @@
 import ReservationRepository from "../repository/reservationRepository";
 import NotificationClient from "../infraestructure/email.client";
-import { NotificationType, ReservationFormatted, Vehicle} from "../types";
+import { NotificationType, ReservationFormatted} from "../types";
 import {
   AvailabilityResult,
   CalendarDay,
@@ -88,6 +88,8 @@ class ReservationService {
       );
     }
   }
+
+  
 
   async createReservation(
     body: CreateReservationBody

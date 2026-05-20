@@ -89,10 +89,10 @@ class VehicleController {
       return;
     }
 
-    if (!body.placa || !body.marca || !body.modelo) {
+    if (!body.placa || !body.marca || !body.modelo || !body.tipo) {
       const response: ApiResponse<null> = {
         success: false,
-        error: "Los campos placa, marca y modelo son requeridos.",
+        error: "Los campos placa, marca, modelo y tipo son requeridos.",
       };
       res.status(400).json(response);
       return;

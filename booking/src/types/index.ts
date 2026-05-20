@@ -29,6 +29,7 @@ export interface Vehicle {
   placa: string;
   marca: string;
   modelo: string;
+  tipo: number; // 1 = carro, 2 = moto
   created_at: Date;
 }
 
@@ -262,6 +263,7 @@ export interface SaveVehicleRequest {
   placa: string;
   marca: string;
   modelo: string;
+  tipo: number; // 1 = carro, 2 = moto
 }
 
 

@@ -35,7 +35,7 @@ class VehicleService {
   body: SaveVehicleRequest
 ): Promise<Vehicle> {
   try {
-    const { placa, marca, modelo } = body;
+    const { placa, marca, modelo, tipo } = body;
 
     // Validaciones del body
     if (!placa || placa.trim() === "") {
@@ -46,6 +46,9 @@ class VehicleService {
     }
     if (!modelo || modelo.trim() === "") {
       throw new Error("El campo modelo es requerido.");
+    }
+    if (typeof tipo !== "number" || (tipo !== 1 && tipo !== 2)) {
+      throw new Error("El campo tipo es requerido y debe ser 1 (carro) o 2 (moto).");
     }
 
     const placaNormalizada = placa.trim().toUpperCase();
@@ -73,7 +76,8 @@ class VehicleService {
       vehicle = await this.repository.createVehicle(
         placaNormalizada,
         marca.trim(),
-        modelo.trim()
+        modelo.trim(),
+        tipo
       );
 
       await this.repository.linkVehicleToUser(vehicle.id, userId);

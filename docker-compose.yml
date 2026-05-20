@@ -69,6 +69,7 @@ services:
       MAIL_PASSWORD: ${MAIL_PASSWORD}
       MAIL_USER: cleanwheelsneiva@gmail.com
       RABBITMQ_URL: ${RABBITMQ_URL}
+      FRONTEND_URL: http://127.0.0.1:5173
     depends_on:
       booking-service:
         condition: service_started
