@@ -15,7 +15,7 @@ import {
   ReservationWithServices,
   UpdateReservationBody,
   UserRole,
-  Vehicle,
+
   WeeklyCalendar,
   WeeklyCalendarQuery,
 } from "../types";
@@ -32,7 +32,7 @@ class ReservationController {
 
   private initRoutes(): void {
     this.router.post("/availability", this.checkAvailability.bind(this));
-    this.router.post("/", this.createReservation.bind(this));
+    this.router.post("/", requireGatewayAuth, this.createReservation.bind(this));
     this.router.get("/upcoming", this.getUpcomingSchedule.bind(this));
     this.router.patch("/:id", requireGatewayAuth, this.updateReservation.bind(this));
     this.router.patch("/:id/cancel", requireGatewayAuth, this.cancelReservation.bind(this));
@@ -101,6 +101,7 @@ class ReservationController {
   private async createReservation(req: Request, res: Response): Promise<void> {
     try {
       const body = req.body as CreateReservationBody;
+      const role = req.gatewayUser!.role;
 
       if (!body.vehicle_id || !body.date || !body.time || !body.service_ids) {
         const response: ApiResponse<null> = {
@@ -110,6 +111,9 @@ class ReservationController {
         };
         res.status(400).json(response);
         return;
+      }
+      if(role === UserRole.ADMIN) {
+        //debemos crear otro servicio, donde el admin pueda crear reservas para otros usuarios, por ahora se asume que el admin solo crea reservas para sí mismo
       }
 
       const reservation: ReservationWithServices =

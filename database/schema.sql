@@ -60,6 +60,7 @@ CREATE TABLE vehicles (
                           placa       VARCHAR(10)     NOT NULL UNIQUE,
                           marca       VARCHAR(80)     NOT NULL,
                           modelo      VARCHAR(80)     NOT NULL,
+                          tipo        INTEGER         NOT NULL CHECK (tipo IN (1, 2)), 
                           created_at  TIMESTAMPTZ     NOT NULL DEFAULT NOW(),
                           updated_at  TIMESTAMPTZ     NOT NULL DEFAULT NOW()
 );

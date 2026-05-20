@@ -5,7 +5,6 @@ import {
   Receipt,
   Reservation,
   ReservationWithServices,
-  Vehicle,
   WashService,
 } from "../types";
 
