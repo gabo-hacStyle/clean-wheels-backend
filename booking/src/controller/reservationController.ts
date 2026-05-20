@@ -113,7 +113,7 @@ class ReservationController {
         return;
       }
       if(role === UserRole.ADMIN) {
-        //debemos crear otro servicio, donde el admin pueda crear reservas para otros usuarios, por ahora se asume que el admin solo crea reservas para sí mismo
+        await this.service.createReservationFromAdmin(body);
       }
 
       const reservation: ReservationWithServices =
