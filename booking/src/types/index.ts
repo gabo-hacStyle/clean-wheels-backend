@@ -29,6 +29,7 @@ export interface Vehicle {
   placa: string;
   marca: string;
   modelo: string;
+  tipo: number; // 1 = carro, 2 = moto
   created_at: Date;
 }
 
@@ -262,4 +263,20 @@ export interface SaveVehicleRequest {
   placa: string;
   marca: string;
   modelo: string;
+  tipo: number; // 1 = carro, 2 = moto
+}
+
+
+export interface Feedback {
+  id: string;
+  reservation_id: string;
+  rating: number;
+  feedback: string;
+  created_at: Date;
+  updated_at: Date;
+}
+
+export interface SaveFeedbackBody {
+  rating: number;   // 1 - 5
+  feedback: string; // máximo 500 caracteres
 }

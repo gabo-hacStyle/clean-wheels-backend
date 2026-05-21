@@ -12,7 +12,7 @@ services:
       ADMIN_SERVICE_URL: http://admin-service:9000
       BOOKING_SERVICE_URL: http://booking-service:9010
       NOTIFICATIONS_SERVICE_URL: http://notifications-service:9020
-      ALLOWED_ORIGINS: http://localhost:5173
+      ALLOWED_ORIGINS: ${FRONTEND_URL}
     depends_on:
       - auth-service
       - admin-service
@@ -27,13 +27,13 @@ services:
       DB_URL: ${DB_URL}
       PORT: 8090
       NODE_ENV: development
-      ALLOWED_ORIGINS: http://localhost:5173
+      ALLOWED_ORIGINS: ${FRONTEND_URL}
       JWT_SECRET: ${JWT_SECRET}
       JWT_EXPIRES_IN: 7d
       GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID}
       GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET}
-      GOOGLE_REDIRECT_URI: http://localhost:5173/google/callback
-      ADMIN_EMAILS: clean.wheels.project@gmail.com
+      GOOGLE_REDIRECT_URI: ${FRONTEND_URL}/google/callback
+      ADMIN_EMAILS: cleanwheelsneiva@gmail.com
 
 
 
@@ -67,8 +67,9 @@ services:
       PORT: 9020
       DB_URL: ${DB_URL}
       MAIL_PASSWORD: ${MAIL_PASSWORD}
-      MAIL_USER: clean.wheels.project@gmail.com
+      MAIL_USER: cleanwheelsneiva@gmail.com
       RABBITMQ_URL: ${RABBITMQ_URL}
+      FRONTEND_URL: ${FRONTEND_URL}
     depends_on:
       booking-service:
         condition: service_started

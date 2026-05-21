@@ -93,6 +93,7 @@ export interface DailyReportRow {
   modelo: string;
   services: string;
   status: ReservationStatus;
+  total_price: number;
 }
 
 // ─── API Response ─────────────────────────────────────────────────────────────

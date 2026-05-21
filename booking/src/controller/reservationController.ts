@@ -15,7 +15,7 @@ import {
   ReservationWithServices,
   UpdateReservationBody,
   UserRole,
-  Vehicle,
+
   WeeklyCalendar,
   WeeklyCalendarQuery,
 } from "../types";
@@ -32,10 +32,11 @@ class ReservationController {
 
   private initRoutes(): void {
     this.router.post("/availability", this.checkAvailability.bind(this));
-    this.router.post("/", this.createReservation.bind(this));
+    this.router.post("/", requireGatewayAuth, this.createReservation.bind(this));
     this.router.get("/upcoming", this.getUpcomingSchedule.bind(this));
     this.router.patch("/:id", requireGatewayAuth, this.updateReservation.bind(this));
     this.router.patch("/:id/cancel", requireGatewayAuth, this.cancelReservation.bind(this));
+    this.router.patch("/:id/reactivate", requireGatewayAuth, this.reactivateReservation.bind(this));
     this.router.post("/:id/complete",
       requireGatewayAuth,
       requireAdmin,
@@ -100,6 +101,7 @@ class ReservationController {
   private async createReservation(req: Request, res: Response): Promise<void> {
     try {
       const body = req.body as CreateReservationBody;
+      const role = req.gatewayUser!.role;
 
       if (!body.vehicle_id || !body.date || !body.time || !body.service_ids) {
         const response: ApiResponse<null> = {
@@ -109,6 +111,9 @@ class ReservationController {
         };
         res.status(400).json(response);
         return;
+      }
+      if(role === UserRole.ADMIN) {
+        await this.service.createReservationFromAdmin(body);
       }
 
       const reservation: ReservationWithServices =
@@ -190,6 +195,46 @@ class ReservationController {
       err.message.includes("no existe") ||
       err.message.includes("no puede cancelarse") ||
       err.message.includes("No tienes permisos");
+
+    const isForbidden = err.message.includes("No tienes permisos");
+
+    const response: ApiResponse<null> = {
+      success: false,
+      error: err.message,
+    };
+
+    res
+      .status(isForbidden ? 403 : isBusinessError ? 422 : 500)
+      .json(response);
+  }
+}
+
+  private async reactivateReservation(
+    req: Request<{ id: string }>,
+    res: Response
+  ): Promise<void> {
+  try {
+    const { id } = req.params;
+    const user = req.gatewayUser!;
+
+    const reactivated = await this.service.reactivateReservation(id, user);
+
+    const response: ApiResponse<Reservation> = {
+      success: true,
+      data: reactivated,
+      message: "Reserva reactivada exitosamente.",
+    };
+
+    res.status(200).json(response);
+  } catch (error) {
+    const err = error as Error;
+
+    const isBusinessError =
+      err.message.includes("no existe") ||
+      err.message.includes("no puede reactivarse") ||
+      err.message.includes("No tienes permisos") ||
+      err.message.includes("no hay cupo disponible") ||
+      err.message.includes("ya ha pasado");
 
     const isForbidden = err.message.includes("No tienes permisos");
 
@@ -311,15 +356,15 @@ class ReservationController {
         return;
       }
 
-      const reservations = await this.service.getActiveReservationsByUser(userId);
+      const reservations = await this.service.getReservationsByUser(userId);
 
       const response: ApiResponse<ReservationFormatted[]> = {
         success: true,
         data: reservations,
         message:
           reservations.length > 0
-            ? `${reservations.length} reserva(s) activa(s) encontrada(s).`
-            : "El usuario no tiene reservas activas.",
+            ? `${reservations.length} reserva(s) encontrada(s).`
+            : "El usuario no tiene reservas.",
       };
 
       res.status(200).json(response);

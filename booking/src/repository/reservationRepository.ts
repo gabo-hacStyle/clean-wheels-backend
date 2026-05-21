@@ -5,7 +5,6 @@ import {
   Receipt,
   Reservation,
   ReservationWithServices,
-  Vehicle,
   WashService,
 } from "../types";
 
@@ -327,6 +326,31 @@ class ReservationRepository {
     }
   }
 
+  async reactivateReservation(reservationId: string): Promise<Reservation> {
+    try {
+      const rows = await this.db.query<Reservation>(
+        `UPDATE reservations
+        SET status = 'pendiente', updated_at = NOW()
+        WHERE id = $1
+        RETURNING *`,
+        [reservationId]
+      );
+
+      if (rows.length === 0) {
+        throw new Error(
+          `No se encontró la reserva con id "${reservationId}" para reactivar.`
+        );
+      }
+
+      return rows[0];
+    } catch (error) {
+      const err = error as Error;
+      throw new Error(
+        `[ReservationRepository] Error reactivando reserva: ${err.message}`
+      );
+    }
+  }
+
   async updateReservation(
     reservationId: string,
     datetime: Date,
@@ -457,8 +481,8 @@ class ReservationRepository {
     }
   }
 
-  // Reservas activas de todos los vehículos de un usuario
-  async findActiveReservationsByUserId(
+  // Reservas de todos los vehículos de un usuario
+  async findReservationsByUserId(
     userId: string
   ): Promise<ReservationWithServices[]> {
     try {
@@ -491,7 +515,6 @@ class ReservationRepository {
         INNER JOIN reservations_services rs ON rs.reservation_id = r.id
         INNER JOIN services s              ON s.id = rs.service_id
         WHERE vu.user_id = $1
-          AND r.status IN ('pendiente', 'confirmada', 'en_proceso')
         GROUP BY r.id, v.placa, v.marca, v.modelo
         ORDER BY r.datetime ASC`,
         [userId]
@@ -520,7 +543,7 @@ class ReservationRepository {
     } catch (error) {
       const err = error as Error;
       throw new Error(
-        `[ReservationRepository] Error obteniendo reservas activas del usuario "${userId}": ${err.message}`
+        `[ReservationRepository] Error obteniendo reservas del usuario "${userId}": ${err.message}`
       );
     }
   }

@@ -1,7 +1,8 @@
-import ReservationRepository from "../repository/reservationRepository";
-import NotificationClient from "../infraestructure/email.client";
-import { NotificationType, ReservationFormatted, SaveVehicleRequest, Vehicle} from "../types";
+
+import { SaveVehicleRequest, Vehicle} from "../types";
 import VehicleRepository from "../repository/vehicleRepository";
+import { censorPlaca } from "./reservationService";
+
 
 class VehicleService {
     
@@ -17,7 +18,10 @@ class VehicleService {
       }
       const vehicles = await this.repository.findVehiclesByUserId(userId);
 
-      return vehicles;
+        return vehicles.map((vehicle) => ({
+          ...vehicle,
+          placa: censorPlaca(vehicle.placa),
+        }));
     } catch (error) {
       const err = error as Error;
       throw new Error(
@@ -31,7 +35,7 @@ class VehicleService {
   body: SaveVehicleRequest
 ): Promise<Vehicle> {
   try {
-    const { placa, marca, modelo } = body;
+    const { placa, marca, modelo, tipo } = body;
 
     // Validaciones del body
     if (!placa || placa.trim() === "") {
@@ -42,6 +46,9 @@ class VehicleService {
     }
     if (!modelo || modelo.trim() === "") {
       throw new Error("El campo modelo es requerido.");
+    }
+    if (typeof tipo !== "number" || (tipo !== 1 && tipo !== 2)) {
+      throw new Error("El campo tipo es requerido y debe ser 1 (carro) o 2 (moto).");
     }
 
     const placaNormalizada = placa.trim().toUpperCase();
@@ -69,7 +76,8 @@ class VehicleService {
       vehicle = await this.repository.createVehicle(
         placaNormalizada,
         marca.trim(),
-        modelo.trim()
+        modelo.trim(),
+        tipo
       );
 
       await this.repository.linkVehicleToUser(vehicle.id, userId);
@@ -82,7 +90,23 @@ class VehicleService {
       `[VehicleService] Error al registrar vehículo: ${err.message}`
     );
   }
-}
+  }
+
+  async getAllVehicles(): Promise<Vehicle[]> {
+    try {
+      const vehicles = await this.repository.findAllVehicles();
+
+      return vehicles.map((vehicle) => ({
+        ...vehicle,
+        placa: censorPlaca(vehicle.placa),
+      }));
+    } catch (error) {
+      const err = error as Error;
+      throw new Error(
+        `[VehicleService] Error al obtener todos los vehículos: ${err.message}`
+      );
+    }
+  }
 }
 
 export default VehicleService;

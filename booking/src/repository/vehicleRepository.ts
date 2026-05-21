@@ -11,7 +11,7 @@ class VehicleRepository {
     async findVehiclesByUserId(userId: string): Promise<Vehicle[]> {
         try {
           const rows = await this.db.query<Vehicle>(
-            `SELECT v.id, v.placa, v.marca, v.modelo, v.created_at
+            `SELECT v.id, v.placa, v.marca, v.modelo, v.tipo, v.created_at
             FROM vehicles v
             INNER JOIN vehicles_users vu ON vu.vehicle_id = v.id
             WHERE vu.user_id = $1`,
@@ -29,7 +29,7 @@ class VehicleRepository {
     async findVehicleByPlaca(placa: string): Promise<Vehicle | null> {
       try {
         const rows = await this.db.query<Vehicle>(
-          `SELECT id, placa, marca, modelo, created_at, updated_at
+          `SELECT id, placa, marca, modelo, tipo, created_at, updated_at
           FROM vehicles
           WHERE UPPER(placa) = UPPER($1)`,
           [placa]
@@ -65,14 +65,15 @@ async isVehicleAlreadyLinkedToUser(
 async createVehicle(
   placa: string,
   marca: string,
-  modelo: string
+  modelo: string,
+  tipo: number
 ): Promise<Vehicle> {
   try {
     const rows = await this.db.query<Vehicle>(
-      `INSERT INTO vehicles (placa, marca, modelo, created_at, updated_at)
-       VALUES (UPPER($1), $2, $3, NOW(), NOW())
+      `INSERT INTO vehicles (placa, marca, modelo, tipo, created_at, updated_at)
+       VALUES (UPPER($1), $2, $3, $4, NOW(), NOW())
        RETURNING *`,
-      [placa, marca, modelo]
+      [placa, marca, modelo, tipo]
     );
     return rows[0];
   } catch (error) {
@@ -100,6 +101,21 @@ async linkVehicleToUser(
     );
   }
 }
+
+  async findAllVehicles(): Promise<Vehicle[]> {
+    try {
+      const rows = await this.db.query<Vehicle>(
+        `SELECT id, placa, marca, modelo, tipo, created_at, updated_at
+         FROM vehicles`
+      );
+      return rows;
+    } catch (error) {
+      const err = error as Error;
+      throw new Error(
+        `[VehicleRepository] Error obteniendo todos los vehículos: ${err.message}`
+      );
+    }
+  }
 }
 
 export default VehicleRepository;

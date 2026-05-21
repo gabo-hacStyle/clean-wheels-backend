@@ -6,9 +6,7 @@ import {
   ApiResponse,
   SaveVehicleRequest,
   UserRole,
-  Vehicle,
-  WeeklyCalendar,
-  WeeklyCalendarQuery,
+  Vehicle
 } from "../types";
 
 class VehicleController {
@@ -24,6 +22,7 @@ class VehicleController {
     private initRoutes(): void {
         this.router.get("/:userId", requireGatewayAuth, this.getVehiclesByUser.bind(this));
         this.router.post("/:userId/add", requireGatewayAuth, this.saveVehicleForUser.bind(this))
+        this.router.get("/", requireGatewayAuth, requireAdmin, this.getAllVehicles.bind(this))
     }
 
     private async getVehiclesByUser(
@@ -90,10 +89,10 @@ class VehicleController {
       return;
     }
 
-    if (!body.placa || !body.marca || !body.modelo) {
+    if (!body.placa || !body.marca || !body.modelo || !body.tipo) {
       const response: ApiResponse<null> = {
         success: false,
-        error: "Los campos placa, marca y modelo son requeridos.",
+        error: "Los campos placa, marca, modelo y tipo son requeridos.",
       };
       res.status(400).json(response);
       return;
@@ -122,7 +121,32 @@ class VehicleController {
 
     res.status(isBusinessError ? 422 : 500).json(response);
   }
-}
+  }
+
+  private async getAllVehicles(
+    req: Request,
+    res: Response
+  ): Promise<void> {
+    try {
+      const vehicles = await this.service.getAllVehicles();
+      const response: ApiResponse<Vehicle[]> = {
+        success: true,
+        data: vehicles,
+        message:
+          vehicles.length > 0
+            ? `${vehicles.length} vehículo(s) encontrado(s).`
+            : "No hay vehículos registrados.",
+      };
+      res.status(200).json(response);
+    } catch (error) {
+      const err = error as Error;
+      const response: ApiResponse<null> = {
+        success: false,
+        error: err.message,
+      };
+      res.status(500).json(response);
+    }
+  }
 
 }
 

@@ -108,6 +108,7 @@ class NotificationService {
             <td>${r.marca} ${r.modelo}</td>
             <td>${r.services}</td>
             <td>${r.status}</td>
+            <td>$${r.total_price}</td>
           </tr>`;
       })
       .join("");
@@ -119,7 +120,7 @@ class NotificationService {
         <thead>
           <tr>
             <th>Hora</th><th>Placa</th><th>Vehículo</th>
-            <th>Servicios</th><th>Estado</th>
+            <th>Servicios</th><th>Estado</th><th>Precio</th>
           </tr>
         </thead>
         <tbody>${filas}</tbody>
